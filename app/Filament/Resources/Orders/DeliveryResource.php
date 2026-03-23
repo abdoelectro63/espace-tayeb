@@ -44,7 +44,7 @@ class DeliveryResource extends Resource
         $query = parent::getEloquentQuery();
 
         $query
-            ->whereIn('status', ['shipped', 'delivered'])
+            ->whereIn('status', ['confirmed', 'shipped', 'delivered'])
             ->where(function (Builder $builder): void {
                 $builder
                     ->whereNull('payment_status')
