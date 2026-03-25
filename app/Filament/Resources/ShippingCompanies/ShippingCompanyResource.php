@@ -47,4 +47,9 @@ class ShippingCompanyResource extends Resource
             'edit' => EditShippingCompany::route('/{record}/edit'),
         ];
     }
+
+    public static function canViewAny(): bool
+    {
+        return auth()->user()?->role !== 'delivery_man';
+    }
 }

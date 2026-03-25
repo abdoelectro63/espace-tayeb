@@ -8,5 +8,6 @@ class ShippingCompany extends Model
 {
     protected $fillable = [
         'name',
+        'color',
     ];
 }

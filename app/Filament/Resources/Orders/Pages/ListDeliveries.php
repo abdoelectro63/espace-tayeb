@@ -19,38 +19,74 @@ class ListDeliveries extends ListRecords
     public function getTabs(): array
     {
         $baseQuery = DeliveryResource::getEloquentQuery();
+        $unpaidScope = fn (Builder $query): Builder => $query->where(function (Builder $builder): void {
+            $builder
+                ->whereNull('payment_status')
+                ->orWhere('payment_status', '!=', 'paid');
+        });
+
+        if (auth()->user()?->role === 'delivery_man') {
+            return [
+                'my_orders' => Tab::make('My Orders')
+                    ->badge((clone $baseQuery)
+                        ->whereIn('status', ['confirmed', 'shipped', 'no_response', 'cancelled', 'refuse', 'reporter', 'delivered'])
+                        ->where(function (Builder $query): void {
+                            $query
+                                ->whereNull('payment_status')
+                                ->orWhere('payment_status', '!=', 'paid');
+                        })
+                        ->count())
+                    ->modifyQueryUsing(fn (Builder $query): Builder => $query
+                        ->whereIn('status', ['confirmed', 'shipped', 'no_response', 'cancelled', 'refuse', 'reporter', 'delivered'])
+                        ->where(function (Builder $builder): void {
+                            $builder
+                                ->whereNull('payment_status')
+                                ->orWhere('payment_status', '!=', 'paid');
+                        })
+                        ->latest('created_at')),
+                'delivered_paid' => Tab::make('Delivered & Paid')
+                    ->badge((clone $baseQuery)
+                        ->where('status', 'delivered')
+                        ->where('payment_status', 'paid')
+                        ->count())
+                    ->modifyQueryUsing(fn (Builder $query): Builder => $query
+                        ->where('status', 'delivered')
+                        ->where('payment_status', 'paid')
+                        ->latest('created_at')),
+            ];
+        }
 
         return [
             'pending' => Tab::make('Pending')
-                ->badge((clone $baseQuery)
+                ->badge($unpaidScope((clone $baseQuery)
                     ->where('status', 'confirmed')
-                    ->whereNull('delivery_man_id')
+                    ->whereNull('delivery_man_id'))
                     ->count())
-                ->modifyQueryUsing(fn (Builder $query): Builder => $query
+                ->modifyQueryUsing(fn (Builder $query): Builder => $unpaidScope($query
                     ->where('status', 'confirmed')
                     ->whereNull('delivery_man_id')
-                    ->latest('created_at')),
+                    ->latest('created_at'))),
             'local_delivery' => Tab::make('Local Delivery')
-                ->badge((clone $baseQuery)
-                    ->where('status', 'shipped')
-                    ->whereNotNull('delivery_man_id')
+                ->badge($unpaidScope((clone $baseQuery)
+                    ->whereIn('status', ['confirmed', 'shipped', 'no_response', 'cancelled', 'refuse', 'reporter'])
+                    ->whereNotNull('delivery_man_id'))
                     ->count())
-                ->modifyQueryUsing(fn (Builder $query): Builder => $query
-                    ->where('status', 'shipped')
+                ->modifyQueryUsing(fn (Builder $query): Builder => $unpaidScope($query
+                    ->whereIn('status', ['confirmed', 'shipped', 'no_response', 'cancelled', 'refuse', 'reporter'])
                     ->whereNotNull('delivery_man_id')
                     ->orderBy('delivery_man_id')
-                    ->latest('created_at')),
+                    ->latest('created_at'))),
             'shipping_companies' => Tab::make('Shipping Companies')
-                ->badge((clone $baseQuery)
+                ->badge($unpaidScope((clone $baseQuery)
                     ->where('status', 'shipped')
                     ->whereNotNull('shipping_company')
-                    ->where('shipping_company', '!=', '')
+                    ->where('shipping_company', '!=', ''))
                     ->count())
-                ->modifyQueryUsing(fn (Builder $query): Builder => $query
+                ->modifyQueryUsing(fn (Builder $query): Builder => $unpaidScope($query
                     ->where('status', 'shipped')
                     ->whereNotNull('shipping_company')
                     ->where('shipping_company', '!=', '')
-                    ->latest('created_at')),
+                    ->latest('created_at'))),
             'collection' => Tab::make('Collection')
                 ->badge((clone $baseQuery)
                     ->where('status', 'delivered')
@@ -62,9 +98,11 @@ class ListDeliveries extends ListRecords
                     ->latest('created_at')),
             'completed' => Tab::make('Completed')
                 ->badge((clone $baseQuery)
+                    ->where('status', 'delivered')
                     ->where('payment_status', 'paid')
                     ->count())
                 ->modifyQueryUsing(fn (Builder $query): Builder => $query
+                    ->where('status', 'delivered')
                     ->where('payment_status', 'paid')
                     ->latest('created_at')),
         ];

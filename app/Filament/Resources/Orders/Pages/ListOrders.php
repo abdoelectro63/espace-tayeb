@@ -24,7 +24,15 @@ class ListOrders extends ListRecords
         return [
             'all' => Tab::make('الكل')
                 ->label('الطلبات النشطة')
-                ->modifyQueryUsing(fn (Builder $query) => $query->withoutTrashed()),
+                ->modifyQueryUsing(fn (Builder $query) => $query
+                    ->withoutTrashed()
+                    ->whereNotIn('status', ['shipped', 'delivered'])),
+
+            'delivered' => Tab::make('تم التسليم')
+                ->label('الطلبات المسلمة')
+                ->modifyQueryUsing(fn (Builder $query) => $query
+                    ->withoutTrashed()
+                    ->where('status', 'delivered')),
 
             'trash' => Tab::make('سلة المحذوفات')
                 ->label('المحذوفات')

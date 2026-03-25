@@ -17,8 +17,14 @@ class ShippingCompaniesTable
             ->columns([
                 TextColumn::make('name')
                     ->label('Company')
+                    ->badge()
+                    ->color(fn ($record): string => $record->color ?: 'info')
                     ->searchable()
                     ->sortable(),
+                TextColumn::make('color')
+                    ->label('Color')
+                    ->badge()
+                    ->color(fn ($record): string => $record->color ?: 'info'),
                 TextColumn::make('created_at')
                     ->dateTime()
                     ->sortable()

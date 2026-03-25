@@ -1,0 +1,181 @@
+@props([
+    'title' => null,
+    'metaDescription' => null,
+])
+
+@php
+    $pageTitle = $title ? $title.' — '.config('app.name') : config('app.name');
+@endphp
+<!DOCTYPE html>
+<html lang="ar" dir="rtl" class="scroll-smooth">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="{{ $metaDescription ?? 'متجر إلكتروني — أجهزة منزلية ومنتجات مختارة بعناية.' }}">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    <title>{{ $pageTitle }}</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700&display=swap" rel="stylesheet">
+    @vite(['resources/css/app.css', 'resources/js/app.js'])
+</head>
+<body class="min-h-screen bg-zinc-50 font-sans text-zinc-900 antialiased">
+    <header class="sticky top-0 z-50 border-b border-zinc-200/80 bg-white/90 backdrop-blur-md">
+        <div class="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3 sm:px-6">
+            <a href="{{ route('store.home') }}" class="flex items-center gap-2 text-lg font-bold tracking-tight text-zinc-900">
+                <span class="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-700 text-sm font-bold text-white">ET</span>
+                <span>{{ config('app.name', 'Espace Tayeb') }}</span>
+            </a>
+            <nav class="hidden items-center gap-6 text-sm font-medium text-zinc-600 md:flex">
+                <a href="{{ route('store.home') }}" class="transition hover:text-emerald-800 {{ request()->routeIs('store.home') ? 'text-emerald-800' : '' }}">الرئيسية</a>
+                <a href="{{ route('store.home') }}#categories" class="transition hover:text-emerald-800">التصنيفات</a>
+                <a href="{{ route('store.home') }}#products" class="transition hover:text-emerald-800">المنتجات</a>
+            </nav>
+            <div class="flex items-center gap-2 sm:gap-3">
+                <button
+                    type="button"
+                    id="store-cart-trigger"
+                    data-cart-fly-target
+                    data-cart-drawer-url="{{ route('store.cart.drawer') }}"
+                    data-checkout-url="{{ route('store.checkout') }}"
+                    data-full-cart-url="{{ route('store.cart') }}"
+                    class="relative inline-flex cursor-pointer items-center gap-2 rounded-full border border-zinc-200 px-3 py-2 text-xs font-semibold text-zinc-700 transition-transform duration-200 hover:border-emerald-700 hover:text-emerald-800 md:text-sm"
+                    aria-expanded="false"
+                    aria-controls="cart-drawer-panel"
+                >
+                    <svg class="h-5 w-5 text-zinc-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 3h1.386c.51 0 .955.343 1.087.835l.383 1.437M7.5 14.25a3 3 0 00-3 3h15.75m-12.75-3h11.218c1.121-2.3 2.1-4.684 2.924-7.138a60.114 60.114 0 0016.136-1.804c.131.043.261.089.391.134M15 12a3 3 0 11-6 0 3 3 0 016 0" />
+                    </svg>
+                    <span class="hidden sm:inline">السلة</span>
+                    <span
+                        id="store-cart-badge"
+                        class="absolute -top-1 -end-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-emerald-700 px-1 text-[10px] font-bold text-white transition-transform {{ ($cartCount ?? 0) > 0 ? '' : 'hidden' }}"
+                        aria-live="polite"
+                    >
+                        <span id="store-cart-badge-value">{{ ($cartCount ?? 0) > 99 ? '99+' : ($cartCount ?? 0) }}</span>
+                    </span>
+                </button>
+                <a href="{{ url('/admin') }}" class="rounded-full border border-zinc-200 px-4 py-2 text-xs font-semibold text-zinc-600 transition hover:border-emerald-700 hover:text-emerald-800 md:text-sm">
+                    لوحة التحكم
+                </a>
+            </div>
+        </div>
+    </header>
+
+    @if(session('cart_success'))
+        <div class="border-b border-emerald-100 bg-emerald-50 px-4 py-2 text-center text-sm font-medium text-emerald-900">
+            {{ session('cart_success') }}
+        </div>
+    @endif
+
+    <div
+        id="cart-toast"
+        class="pointer-events-none fixed top-20 left-1/2 z-[10000] hidden -translate-x-1/2 translate-y-2 rounded-full bg-zinc-900 px-5 py-2.5 text-sm font-medium text-white opacity-0 shadow-lg transition-all duration-300 sm:top-24"
+        role="status"
+        aria-live="polite"
+    ></div>
+
+    <main>
+        {{ $slot }}
+    </main>
+
+    <footer class="mt-20 border-t border-zinc-200 bg-white">
+        <div class="mx-auto max-w-6xl px-4 py-12 sm:px-6">
+            <div class="flex flex-col gap-8 md:flex-row md:items-start md:justify-between">
+                <div>
+                    <p class="text-lg font-bold text-zinc-900">{{ config('app.name') }}</p>
+                    <p class="mt-2 max-w-sm text-sm leading-relaxed text-zinc-600">
+                        متجركم للأجهزة المنزلية والمنتجات المختارة — جودة، شفافية في الأسعار، وخدمة قريبة منكم.
+                    </p>
+                </div>
+                <div class="text-sm text-zinc-600">
+                    <p class="font-semibold text-zinc-900">روابط</p>
+                    <ul class="mt-3 space-y-2">
+                        <li><a href="{{ route('store.home') }}" class="hover:text-emerald-800">الرئيسية</a></li>
+                        <li><a href="{{ route('store.home') }}#products" class="hover:text-emerald-800">المنتجات</a></li>
+                        <li><a href="{{ route('store.cart') }}" class="hover:text-emerald-800">سلة التسوق</a></li>
+                        <li><a href="{{ route('store.checkout') }}" class="hover:text-emerald-800">إتمام الشراء</a></li>
+                    </ul>
+                </div>
+            </div>
+            <p class="mt-10 border-t border-zinc-100 pt-8 text-center text-xs text-zinc-500">
+                &copy; {{ date('Y') }} {{ config('app.name') }}. جميع الحقوق محفوظة.
+            </p>
+        </div>
+    </footer>
+
+    {{-- Mini-cart last in DOM + high z-index so it stays above <main> for hit-testing --}}
+    <div
+        id="cart-drawer-root"
+        class="fixed inset-0 z-[200] invisible"
+        style="pointer-events: none"
+        aria-hidden="true"
+        data-open="0"
+    >
+        <div
+            id="cart-drawer-backdrop"
+            class="absolute inset-0 z-0 cursor-pointer bg-zinc-900/50 opacity-0 transition-opacity duration-300"
+            style="pointer-events: none"
+            aria-hidden="true"
+        ></div>
+        <aside
+            id="cart-drawer-panel"
+            class="absolute inset-y-0 left-0 z-10 flex h-full w-full max-w-md -translate-x-full transform flex-col bg-white shadow-2xl transition-transform duration-300 ease-out"
+            style="pointer-events: none"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="cart-drawer-title"
+        >
+            <div class="flex items-center justify-between border-b border-zinc-100 px-4 py-4">
+                <h2 id="cart-drawer-title" class="text-lg font-bold text-zinc-900">سلة التسوق</h2>
+                <button
+                    type="button"
+                    id="cart-drawer-close"
+                    class="rounded-lg p-2 text-zinc-500 transition hover:bg-zinc-100 hover:text-zinc-900"
+                    aria-label="إغلاق"
+                >
+                    <svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                </button>
+            </div>
+            <div id="cart-drawer-items" class="min-h-0 flex-1 overflow-y-auto px-4 py-4">
+                <p class="py-10 text-center text-sm text-zinc-500">اضغط على السلة لعرض المنتجات.</p>
+            </div>
+            <div class="border-t border-zinc-100 bg-zinc-50/80 px-4 py-4">
+                <p class="mb-3 text-xs leading-relaxed text-zinc-500">التوصيل متاح داخل المغرب فقط. اختر المدينة من صفحة السلة أو عند الدفع.</p>
+                <div class="mb-2 flex items-center justify-between text-sm">
+                    <span class="text-zinc-600">المجموع الفرعي</span>
+                    <span id="cart-drawer-subtotal" class="font-semibold text-zinc-900">0.00 MAD</span>
+                </div>
+                <div class="mb-2 flex items-center justify-between text-sm">
+                    <span class="text-zinc-600">التوصيل</span>
+                    <span id="cart-drawer-shipping" class="font-semibold text-zinc-900">—</span>
+                </div>
+                <div class="mb-2 flex items-center justify-between text-sm">
+                    <span class="text-zinc-600">الإجمالي</span>
+                    <span id="cart-drawer-grand-total" class="text-lg font-bold text-zinc-900">—</span>
+                </div>
+                <p id="cart-drawer-shipping-hint" class="mb-3 hidden text-xs text-zinc-500"></p>
+                <div class="flex flex-col gap-3 sm:flex-row-reverse">
+                    <a
+                        id="cart-drawer-checkout"
+                        href="{{ route('store.checkout') }}"
+                        class="inline-flex flex-1 items-center justify-center rounded-full bg-emerald-700 px-4 py-3 text-sm font-semibold text-white shadow transition hover:bg-emerald-800"
+                    >
+                        إتمام الشراء
+                    </a>
+                    <button
+                        type="button"
+                        id="cart-drawer-continue"
+                        class="inline-flex flex-1 items-center justify-center rounded-full border border-zinc-200 bg-white px-4 py-3 text-sm font-semibold text-zinc-800 transition hover:bg-zinc-50"
+                    >
+                        متابعة التسوق
+                    </button>
+                </div>
+                <a href="{{ route('store.cart') }}" class="mt-4 block text-center text-sm font-medium text-emerald-800 hover:underline">
+                    عرض السلة كاملة
+                </a>
+            </div>
+        </aside>
+    </div>
+</body>
+</html>

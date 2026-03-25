@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Products\Tables;
 
+use App\Models\Product;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
@@ -15,7 +16,7 @@ class ProductsTable
     {
         return $table
             ->columns([
-  /*              Tables\Columns\ImageColumn::make('images')
+                /*              Tables\Columns\ImageColumn::make('images')
                     ->label('صور المنتج')
                     ->stacked() // سيعرض الصور فوق بعضها بشكل أنيق
                     ->limit(3) // يعرض أول 3 صور فقط في الجدول
@@ -38,13 +39,29 @@ class ProductsTable
                     ->money('MAD')
                     ->color('primary')
                     ->weight('bold'),
-                
+
+                Tables\Columns\TextColumn::make('free_shipping')
+                    ->label('التوصيل')
+                    ->formatStateUsing(fn (?bool $state): string => $state ? 'مجاني' : 'مدفوع')
+                    ->badge()
+                    ->color(fn (?bool $state): string => $state ? 'success' : 'gray')
+                    ->toggleable(isToggledHiddenByDefault: true),
+
                 Tables\Columns\ToggleColumn::make('is_active')
                     ->label('عرض في المتجر'),
                 Tables\Columns\TextColumn::make('stock')
                     ->label('المخزون')
+                    ->formatStateUsing(function ($state, Product $record): string {
+                        if (! $record->track_stock) {
+                            return 'متوفر';
+                        }
+
+                        return (string) $state;
+                    })
                     ->sortable()
-                    ->color(fn (int $state): string => $state <= 5 ? 'danger' : 'success'), 
+                    ->color(fn (Product $record): string => ! $record->track_stock
+                        ? 'success'
+                        : ((int) $record->stock <= 5 ? 'danger' : 'success')),
 
             ])
             ->filters([

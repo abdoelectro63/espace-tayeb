@@ -1,10 +1,12 @@
-<?php 
+<?php
 
 namespace App\Filament\Resources\Products\Schemas;
 
 use Filament\Forms;
-use Filament\Schemas\Schema;
-use Filament\Schemas\Components\Section; // تم تصحيح المسار هنا
+use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\Utilities\Get;
+use Filament\Schemas\Schema; // تم تصحيح المسار هنا
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Str;
 
 class ProductForm
@@ -63,7 +65,28 @@ class ProductForm
                         Forms\Components\Toggle::make('is_active')
                             ->label('تفعيل المنتج في المتجر')
                             ->default(true),
+
+                        Forms\Components\Toggle::make('free_shipping')
+                            ->label('توصيل مجاني لهذا المنتج')
+                            ->helperText('إن كان مفعّلاً، لا تُحتسب رسوم التوصيل لهذا المنتج عند الطلب.')
+                            ->default(false),
                     ])->columns(3),
+
+                Section::make('المخزون والتوفر')
+                    ->schema([
+                        Forms\Components\Toggle::make('track_stock')
+                            ->label('تحديد كمية محددة في المخزون')
+                            ->helperText('عند الإيقاف: يُعرض المنتج كـ «متوفر» دون رقم، ولا يُحدّ الطلب برقم مخزون. عند التفعيل: أدخل عدد القطع المتوفرة.')
+                            ->default(false)
+                            ->live(),
+                        Forms\Components\TextInput::make('stock')
+                            ->label('الكمية المتوفرة')
+                            ->numeric()
+                            ->minValue(1)
+                            ->visible(fn (Get $get): bool => (bool) $get('track_stock'))
+                            ->required(fn (Get $get): bool => (bool) $get('track_stock')),
+                    ])
+                    ->columns(1),
 
                 Section::make('صور المنتج')
                     ->description('ارفع الصورة الرئيسية وصور العرض الجانبية للأجهزة')
@@ -71,25 +94,22 @@ class ProductForm
                         Forms\Components\FileUpload::make('main_image')
                             ->label('صورة المنتج الرئيسية (Thumbnail)')
                             ->image()
+                            ->disk('public')
+                            ->visibility('public')
                             ->directory('products/titles')
                             ->imageEditor()
-                            ->required(),
+                            ->required(fn (?Model $record): bool => $record === null),
 
                         Forms\Components\FileUpload::make('images')
                             ->label('صور إضافية للمنتج')
                             ->image()
+                            ->disk('public')
+                            ->visibility('public')
                             ->multiple()
                             ->reorderable()
                             ->appendFiles()
                             ->directory('products/gallery')
-                            ->imageEditor()
                             ->columnSpanFull(),
-
-                        Forms\Components\TextInput::make('stock')
-                            ->label('المخزون المتوفر')
-                            ->numeric()
-                            ->default(0)
-                            ->required(),
                     ]),
             ]);
     }
