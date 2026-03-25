@@ -6,8 +6,23 @@
                 <span class="mx-2">/</span>
                 <span class="text-zinc-800">{{ $category->name }}</span>
             </nav>
-            <h1 class="mt-4 text-3xl font-bold text-zinc-900">{{ $category->name }}</h1>
-            <p class="mt-2 text-sm text-zinc-600">جميع المنتجات المفعّلة في هذا التصنيف</p>
+            <div class="mt-6 flex flex-wrap items-center gap-4">
+                @if($img = $category->imageUrl())
+                    <img
+                        src="{{ $img }}"
+                        alt=""
+                        class="h-16 w-16 shrink-0 rounded-2xl object-cover shadow-sm ring-1 ring-zinc-100 sm:h-20 sm:w-20"
+                    />
+                @elseif($category->icon)
+                    <span class="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-800 ring-1 ring-emerald-100 sm:h-20 sm:w-20">
+                        <x-dynamic-component :component="$category->icon" class="h-10 w-10 sm:h-12 sm:w-12" />
+                    </span>
+                @endif
+                <div class="min-w-0 flex-1">
+                    <h1 class="text-3xl font-bold text-zinc-900">{{ $category->name }}</h1>
+                    <p class="mt-2 text-sm text-zinc-600">جميع المنتجات المفعّلة في هذا التصنيف</p>
+                </div>
+            </div>
         </div>
     </div>
 

@@ -33,10 +33,24 @@
                 @foreach($categories as $category)
                     <a
                         href="{{ route('store.category', $category->slug) }}"
-                        class="flex items-center justify-between rounded-2xl border border-zinc-100 bg-white p-5 shadow-sm transition hover:border-emerald-200 hover:shadow-md"
+                        class="flex items-center justify-between gap-3 rounded-2xl border border-zinc-100 bg-white p-5 shadow-sm transition hover:border-emerald-200 hover:shadow-md"
                     >
-                        <span class="font-semibold text-zinc-900">{{ $category->name }}</span>
-                        <span class="text-emerald-700" aria-hidden="true">←</span>
+                        <span class="flex min-w-0 flex-1 items-center gap-3">
+                            @if($img = $category->imageUrl())
+                                <img
+                                    src="{{ $img }}"
+                                    alt=""
+                                    class="h-12 w-12 shrink-0 rounded-xl object-cover ring-1 ring-zinc-100"
+                                    loading="lazy"
+                                />
+                            @elseif($category->icon)
+                                <span class="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-800 ring-1 ring-emerald-100">
+                                    <x-dynamic-component :component="$category->icon" class="h-6 w-6" />
+                                </span>
+                            @endif
+                            <span class="truncate font-semibold text-zinc-900">{{ $category->name }}</span>
+                        </span>
+                        <span class="shrink-0 text-emerald-700" aria-hidden="true">←</span>
                     </a>
                 @endforeach
             </div>

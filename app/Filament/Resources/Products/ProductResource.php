@@ -14,6 +14,9 @@ use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
 
+/**
+ * Product image FileUpload fields are configured in {@see ProductForm} and optimized with {@see \App\Support\ProductImageOptimizer}.
+ */
 class ProductResource extends Resource
 {
     protected static ?string $model = Product::class;

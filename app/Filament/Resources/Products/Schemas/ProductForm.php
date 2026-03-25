@@ -2,12 +2,15 @@
 
 namespace App\Filament\Resources\Products\Schemas;
 
+use App\Support\ProductImageOptimizer;
 use Filament\Forms;
+use Filament\Forms\Components\BaseFileUpload;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Schema; // تم تصحيح المسار هنا
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Str;
+use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
 
 class ProductForm
 {
@@ -98,6 +101,10 @@ class ProductForm
                             ->visibility('public')
                             ->directory('products/titles')
                             ->imageEditor()
+                            ->saveUploadedFileUsing(function (BaseFileUpload $component, TemporaryUploadedFile $file): ?string {
+                                return ProductImageOptimizer::processAndStore($file, 'titles');
+                            })
+                            ->helperText('تُحوَّل تلقائياً إلى WebP، بعرض أقصى 1000px وجودة 80%.')
                             ->required(fn (?Model $record): bool => $record === null),
 
                         Forms\Components\FileUpload::make('images')
@@ -109,6 +116,10 @@ class ProductForm
                             ->reorderable()
                             ->appendFiles()
                             ->directory('products/gallery')
+                            ->saveUploadedFileUsing(function (BaseFileUpload $component, TemporaryUploadedFile $file): ?string {
+                                return ProductImageOptimizer::processAndStore($file, 'gallery');
+                            })
+                            ->helperText('نفس المعالجة: WebP، عرض أقصى 1000px، جودة 80%.')
                             ->columnSpanFull(),
                     ]),
             ]);
