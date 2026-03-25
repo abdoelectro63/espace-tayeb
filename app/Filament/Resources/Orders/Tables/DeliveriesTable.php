@@ -10,6 +10,7 @@ use Filament\Forms\Components\Select;
 use Filament\Notifications\Notification;
 use Filament\Tables;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Grouping\Group;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Collection;
 
@@ -37,7 +38,7 @@ class DeliveriesTable
                     ->badge()
                     ->color(fn (string $state): string => match ($state) {
                         'pending' => 'warning',
-                        'confirmed' => 'warning',
+                        'confirmed' => 'info',
                         'shipped' => 'warning',
                         'delivered' => 'success',
                         'cancelled' => 'danger',
@@ -54,6 +55,13 @@ class DeliveriesTable
                     ->label('المجموع')
                     ->money('MAD'),
             ])
+            ->groups([
+                Group::make('deliveryMan.name')
+                    ->label('Livreur')
+                    ->getTitleFromRecordUsing(fn ($record): string => $record->deliveryMan?->name ?? 'غير معين'),
+            ])
+            ->defaultGroup('deliveryMan.name')
+            ->defaultSort('created_at', 'desc')
             ->filters([
                 Tables\Filters\SelectFilter::make('delivery_man_id')
                     ->label('Delivery Man')
@@ -118,12 +126,9 @@ class DeliveriesTable
                         ]);
 
                         Notification::make()
-                            ->title('تم تأكيد الدفع')
-                            ->body('جاري فتح صفحة الفاتورة للطباعة.')
+                            ->title('تم تأكيد قبض المبلغ')
                             ->success()
                             ->send();
-
-                        redirect()->to(route('invoices.orders.show', $record));
                     }),
             ])
             ->bulkActions([
@@ -150,7 +155,13 @@ class DeliveriesTable
                                 'status' => 'shipped',
                             ]);
                         });
+
+                        Notification::make()
+                            ->title('تم تعيين الطلبات للموزع بنجاح')
+                            ->success()
+                            ->send();
                     })
+                    ->deselectRecordsAfterCompletion()
                     ->visible(fn (): bool => auth()->user()?->role === 'admin')
                     ->requiresConfirmation(),
             ]);
