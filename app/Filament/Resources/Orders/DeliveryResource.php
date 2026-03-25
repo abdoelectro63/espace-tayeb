@@ -11,6 +11,7 @@ use App\Filament\Resources\Orders\Pages;
 use App\Filament\Resources\Orders\Schemas\OrderForm;
 use App\Filament\Resources\Orders\Tables\DeliveriesTable;
 use Illuminate\Database\Eloquent\Builder;
+use Filament\Tables\Grouping\Group;
 use BackedEnum; // ضروري لحل مشكلة النوع (Type)
 use UnitEnum;
 
@@ -36,7 +37,13 @@ class DeliveryResource extends Resource
 
     public static function table(Table $table): Table
     {
-        return DeliveriesTable::configure($table);
+        return DeliveriesTable::configure($table)
+            ->groups([
+                Group::make('deliveryMan.name')
+                    ->label('الموزع')
+                    ->collapsible(),
+            ])
+            ->defaultGroup('deliveryMan.name');
     }
 
     public static function getEloquentQuery(): Builder
@@ -44,12 +51,7 @@ class DeliveryResource extends Resource
         $query = parent::getEloquentQuery();
 
         $query
-            ->whereIn('status', ['confirmed', 'shipped', 'delivered'])
-            ->where(function (Builder $builder): void {
-                $builder
-                    ->whereNull('payment_status')
-                    ->orWhere('payment_status', '!=', 'paid');
-            });
+            ->whereIn('status', ['confirmed', 'shipped', 'delivered']);
 
         if (auth()->user()?->role === 'delivery_man') {
             $query->where('delivery_man_id', auth()->id());
