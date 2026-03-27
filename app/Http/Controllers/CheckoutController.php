@@ -12,6 +12,7 @@ use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
 
 class CheckoutController extends Controller
 {
@@ -49,8 +50,13 @@ class CheckoutController extends Controller
             'customer_name' => ['required', 'string', 'max:255'],
             'customer_phone' => ['required', 'string', 'max:50'],
             'shipping_address' => ['required', 'string', 'max:2000'],
-            'city' => ['required_if:shipping_zone,other', 'string', 'max:255'],
             'shipping_zone' => ['required', 'in:casablanca,other'],
+            'city' => [
+                'nullable',
+                'string',
+                'max:255',
+                Rule::requiredIf(fn (): bool => $request->input('shipping_zone') === 'other'),
+            ],
         ]);
 
         $settings = ShippingSetting::query()->first();

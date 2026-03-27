@@ -17,6 +17,11 @@ class ShippingCompanyForm
                     ->required()
                     ->maxLength(255)
                     ->unique(ignoreRecord: true),
+                TextInput::make('store_id')
+                    ->label('Store ID')
+                    ->numeric()
+                    ->helperText('Required for Express Coursier batch API.')
+                    ->nullable(),
                 Select::make('color')
                     ->label('Badge Color')
                     ->options([
@@ -29,6 +34,12 @@ class ShippingCompanyForm
                     ])
                     ->default('info')
                     ->required(),
+                TextInput::make('token')
+                    ->label('API Token')
+                    ->password()
+                    ->revealable()
+                    ->helperText('Token used for shipping API calls (e.g. Vitips).')
+                    ->nullable(),
             ]);
     }
 }

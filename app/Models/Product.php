@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 class Product extends Model
 {
@@ -12,6 +13,7 @@ class Product extends Model
 
     protected $fillable = [
         'name',
+        'code',
         'slug',
         'description',
         'price',
@@ -25,9 +27,51 @@ class Product extends Model
         'free_shipping',
     ];
 
+    protected static function booted(): void
+    {
+        static::creating(function (self $product): void {
+            if (blank($product->code)) {
+                $product->code = self::generateUniqueCode((string) ($product->name ?? ''));
+            }
+        });
+    }
+
     public function category()
     {
         return $this->belongsTo(Category::class);
+    }
+
+    /**
+     * Product category id plus all ancestor ids (parent chain).
+     *
+     * @return list<int>
+     */
+    public function allRelatedCategories(): array
+    {
+        if (! filled($this->category_id)) {
+            return [];
+        }
+
+        $ids = [];
+        $seen = [];
+        $current = $this->category;
+
+        if ($current === null && filled($this->category_id)) {
+            $current = Category::query()->find($this->category_id);
+        }
+
+        while ($current !== null) {
+            $id = (int) $current->id;
+            if ($id < 1 || isset($seen[$id])) {
+                break;
+            }
+
+            $ids[] = $id;
+            $seen[$id] = true;
+            $current = $current->parent;
+        }
+
+        return $ids;
     }
 
     protected $casts = [
@@ -94,6 +138,32 @@ class Product extends Model
         return (float) (filled($this->discount_price) ? $this->discount_price : $this->price);
     }
 
+    public function seoTitle(): string
+    {
+        return "{$this->name} - Espace Tayeb | Meilleur Prix au Maroc";
+    }
+
+    public function seoDescription(): string
+    {
+        return Str::limit(strip_tags((string) ($this->description ?? '')), 160);
+    }
+
+    /**
+     * Route parameters for SEO product URL:
+     * /{parent?}/{category}/{product-slug}
+     *
+     * @return array{categoryPath:string,product:string}
+     */
+    public function seoRouteParams(): array
+    {
+        $this->loadMissing('category.parent');
+
+        return [
+            'categoryPath' => $this->category?->storePath() ?? 'products',
+            'product' => $this->slug,
+        ];
+    }
+
     public function isOnSale(): bool
     {
         if (! filled($this->discount_price)) {
@@ -122,5 +192,22 @@ class Product extends Model
         }
 
         return max(0, (int) ($this->stock ?? 0));
+    }
+
+    public static function generateUniqueCode(string $name): string
+    {
+        $normalized = Str::lower(Str::ascii($name));
+        $lettersOnly = preg_replace('/[^a-z0-9]/', '', $normalized) ?: '';
+        $prefix = substr($lettersOnly, 0, 3);
+
+        if (strlen($prefix) < 3) {
+            $prefix = str_pad($prefix, 3, 'x');
+        }
+
+        do {
+            $candidate = $prefix.str_pad((string) random_int(0, 99999), 5, '0', STR_PAD_LEFT);
+        } while (self::query()->where('code', $candidate)->exists());
+
+        return $candidate;
     }
 }

@@ -16,7 +16,7 @@ class Order extends Model
         'city', 'shipping_address', 'total_price',
         'shipping_fee', 'shipping_zone',
         'status', 'notes', 'delivery_man_id', 'payment_status', 'paid_at',
-        'shipping_company', 'tracking_number',
+        'shipping_company', 'shipping_company_id', 'tracking_number', 'shipping_provider_status',
     ];
 
     protected $casts = [
@@ -47,5 +47,10 @@ class Order extends Model
     public function deliveryMan(): BelongsTo
     {
         return $this->belongsTo(User::class, 'delivery_man_id');
+    }
+
+    public function shippingCompany(): BelongsTo
+    {
+        return $this->belongsTo(ShippingCompany::class, 'shipping_company_id');
     }
 }

@@ -7,6 +7,26 @@ function getCsrfToken() {
 }
 
 /**
+ * Convert absolute app URLs to same-origin relative paths.
+ * This avoids cross-origin failures when shared tunnel host changes.
+ *
+ * @param {string} rawUrl
+ * @returns {string}
+ */
+function sameOriginPath(rawUrl) {
+    if (!rawUrl) {
+        return '/';
+    }
+
+    try {
+        const parsed = new URL(rawUrl, window.location.origin);
+        return `${parsed.pathname}${parsed.search}${parsed.hash}`;
+    } catch {
+        return rawUrl;
+    }
+}
+
+/**
  * @param {Event} e
  * @returns {Element | null}
  */
@@ -81,9 +101,9 @@ function bumpCartIcon() {
     if (!el) {
         return;
     }
-    el.classList.add('scale-110', 'ring-2', 'ring-emerald-400/80');
+    el.classList.add('scale-110', 'ring-2', 'ring-orange-400/80');
     window.setTimeout(() => {
-        el.classList.remove('scale-110', 'ring-2', 'ring-emerald-400/80');
+        el.classList.remove('scale-110', 'ring-2', 'ring-orange-400/80');
     }, 420);
 }
 
@@ -503,7 +523,7 @@ function initCartDrawer() {
         return;
     }
 
-    const drawerUrl = trigger.getAttribute('data-cart-drawer-url') || '/cart/drawer';
+    const drawerUrl = sameOriginPath(trigger.getAttribute('data-cart-drawer-url') || '/cart/drawer');
 
     /** Inline styles so pointer-events always win over Tailwind / stacking quirks. */
     function setDrawerPointerEvents(open) {

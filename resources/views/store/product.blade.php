@@ -1,11 +1,45 @@
-<x-layouts.store :title="$product->name" :metaDescription="\Illuminate\Support\Str::limit(strip_tags($product->description ?? ''), 160)">
+@php
+    $productBreadcrumbItems = [
+        ['name' => 'الرئيسية', 'url' => route('store.home')],
+    ];
+
+    if ($product->category?->parent) {
+        $productBreadcrumbItems[] = [
+            'name' => $product->category->parent->name,
+            'url' => route('store.category', ['path' => $product->category->parent->storePath()]),
+        ];
+    }
+
+    if ($product->category) {
+        $productBreadcrumbItems[] = [
+            'name' => $product->category->name,
+            'url' => route('store.category', ['path' => $product->category->storePath()]),
+        ];
+    }
+
+    $productBreadcrumbItems[] = [
+        'name' => $product->name,
+        'url' => route('product.show', $product->seoRouteParams()),
+    ];
+@endphp
+
+<x-layouts.store
+    :title="$product->seoTitle()"
+    :metaDescription="$product->seoDescription()"
+    :canonical="route('product.show', $product->seoRouteParams())"
+    :breadcrumbItems="$productBreadcrumbItems"
+>
     <div class="border-b border-zinc-200 bg-white">
         <div class="mx-auto max-w-6xl px-4 py-8 sm:px-6">
             <nav class="text-xs text-zinc-500">
                 <a href="{{ route('store.home') }}" class="hover:text-emerald-800">الرئيسية</a>
                 <span class="mx-2">/</span>
                 @if($product->category)
-                    <a href="{{ route('store.category', $product->category->slug) }}" class="hover:text-emerald-800">{{ $product->category->name }}</a>
+                    @if($product->category->parent)
+                        <a href="{{ route('store.category', ['path' => $product->category->parent->storePath()]) }}" class="hover:text-emerald-800">{{ $product->category->parent->name }}</a>
+                        <span class="mx-2">/</span>
+                    @endif
+                    <a href="{{ route('store.category', ['path' => $product->category->storePath()]) }}" class="hover:text-emerald-800">{{ $product->category->name }}</a>
                     <span class="mx-2">/</span>
                 @endif
                 <span class="text-zinc-800">{{ $product->name }}</span>
@@ -40,7 +74,7 @@
 
             <div>
                 @if($product->category)
-                    <p class="text-sm font-medium text-emerald-800">{{ $product->category->name }}</p>
+                    <p class="text-sm font-medium text-orange-700">{{ $product->category->name }}</p>
                 @endif
                 <h1 class="mt-2 text-3xl font-bold text-zinc-900 sm:text-4xl">{{ $product->name }}</h1>
 
@@ -54,13 +88,13 @@
 
                 <div class="mt-6 flex flex-wrap gap-3 text-sm">
                     @if($product->free_shipping)
-                        <span class="inline-flex items-center gap-2 rounded-full bg-emerald-50 px-3 py-1.5 font-medium text-emerald-900 ring-1 ring-emerald-200/80">
+                        <span class="inline-flex items-center gap-2 rounded-full bg-orange-50 px-3 py-1.5 font-medium text-orange-700 ring-1 ring-orange-200/80">
                             التوصيل مجاني لهذا المنتج
                         </span>
                     @endif
                     @if($product->inStock())
-                        <span class="inline-flex items-center gap-2 rounded-full bg-emerald-50 px-3 py-1.5 font-medium text-emerald-900">
-                            <span class="h-2 w-2 rounded-full bg-emerald-500"></span>
+                        <span class="inline-flex items-center gap-2 rounded-full bg-orange-50 px-3 py-1.5 font-medium text-orange-700">
+                            <span class="h-2 w-2 rounded-full bg-orange-500"></span>
                             @if($product->track_stock)
                                 متوفر ({{ $product->stock }})
                             @else
@@ -90,7 +124,7 @@
                     <form
                         method="post"
                         action="{{ route('store.cart.add') }}"
-                        class="mt-10 flex flex-col gap-4 rounded-2xl border border-emerald-100 bg-emerald-50/50 p-6 sm:flex-row sm:items-end sm:justify-between"
+                        class="mt-10 flex flex-col gap-4 rounded-2xl border border-orange-100 bg-orange-50/50 p-6 sm:flex-row sm:items-end sm:justify-between"
                         data-add-to-cart
                         data-fly-image="{{ e($product->mainImageUrl()) }}"
                         data-fly-source-selector="[data-main-product-img]"
@@ -116,8 +150,11 @@
                                 @endif
                             </p>
                         </div>
-                        <button type="submit" class="inline-flex w-full items-center justify-center rounded-full bg-emerald-700 px-8 py-3 text-sm font-semibold text-white shadow transition hover:bg-emerald-800 sm:w-auto">
-                            أضف إلى السلة
+                        <button type="submit" class="inline-flex w-full items-center justify-center gap-2 rounded-full bg-[#ff751f] px-8 py-3 text-sm font-semibold text-white shadow transition hover:bg-orange-600 sm:w-auto">
+                            <svg class="h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor" aria-hidden="true">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 3h1.386c.51 0 .955.343 1.087.835l.383 1.437M7.5 14.25a3 3 0 00-3 3h15.75m-12.75-3h11.218c1.121-2.3 2.1-4.684 2.924-7.138M8.25 20.25a.75.75 0 100-1.5.75.75 0 000 1.5zm9 0a.75.75 0 100-1.5.75.75 0 000 1.5z" />
+                            </svg>
+                            <span>أضف إلى السلة</span>
                         </button>
                     </form>
                 @endif

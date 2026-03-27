@@ -5,9 +5,9 @@ namespace App\Filament\Resources\Orders\Schemas;
 use App\Models\Product;
 use App\Services\ShippingCalculator;
 use Filament\Forms;
-use Filament\Forms\Get;
-use Filament\Forms\Set;
 use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\Utilities\Get;
+use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
 
 class OrderForm
@@ -127,13 +127,17 @@ class OrderForm
                                     ->preload()
                                     ->required()
                                     ->live()
-                                    ->afterStateUpdated(function ($set, $state): void {
+                                    ->afterStateUpdated(function (Set $set, Get $get, $state): void {
                                         if (blank($state)) {
+                                            self::recalculateShippingAndTotal($get, $set);
+
                                             return;
                                         }
 
                                         $product = Product::query()->find($state);
                                         if ($product === null) {
+                                            self::recalculateShippingAndTotal($get, $set);
+
                                             return;
                                         }
 
@@ -142,6 +146,7 @@ class OrderForm
                                             : $product->price;
 
                                         $set('unit_price', $price);
+                                        self::recalculateShippingAndTotal($get, $set);
                                     }),
 
                                 Forms\Components\TextInput::make('quantity')
@@ -150,14 +155,20 @@ class OrderForm
                                     ->default(1)
                                     ->minValue(1)
                                     ->required()
-                                    ->live(),
+                                    ->live()
+                                    ->afterStateUpdated(function (Get $get, Set $set): void {
+                                        self::recalculateShippingAndTotal($get, $set);
+                                    }),
 
                                 Forms\Components\TextInput::make('unit_price')
                                     ->label('سعر الوحدة')
                                     ->numeric()
                                     ->prefix('MAD')
                                     ->required()
-                                    ->live(),
+                                    ->live()
+                                    ->afterStateUpdated(function (Get $get, Set $set): void {
+                                        self::recalculateShippingAndTotal($get, $set);
+                                    }),
                             ])
                             ->columns(3)
                             ->defaultItems(1)

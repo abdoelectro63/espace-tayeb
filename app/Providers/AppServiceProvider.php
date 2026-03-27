@@ -4,6 +4,7 @@ namespace App\Providers;
 
 use App\Services\ShoppingCart;
 use Illuminate\Pagination\Paginator;
+use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
 
@@ -22,6 +23,28 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        if (! $this->app->runningInConsole()) {
+            $forwardedHost = trim((string) request()->header('X-Forwarded-Host', ''));
+            $forwardedProto = strtolower((string) request()->header('X-Forwarded-Proto', ''));
+            $host = $forwardedHost !== '' ? $forwardedHost : (string) request()->getHttpHost();
+            $isSecureRequest = request()->isSecure()
+                || $forwardedProto === 'https'
+                || str_contains($host, 'trycloudflare.com')
+                || str_contains($host, 'sharedwithexpose.com');
+
+            if ($isSecureRequest) {
+                URL::forceScheme('https');
+            }
+
+            $appUrl = ($isSecureRequest ? 'https://' : 'http://').$host;
+            config([
+                'app.url' => $appUrl,
+                'app.asset_url' => $appUrl,
+                'filesystems.disks.public.url' => rtrim($appUrl, '/').'/storage',
+            ]);
+            URL::forceRootUrl(config('app.url'));
+        }
+
         Paginator::defaultView('pagination::tailwind');
         Paginator::defaultSimpleView('pagination::simple-tailwind');
 
@@ -29,22 +52,5 @@ class AppServiceProvider extends ServiceProvider
             $view->with('cartCount', app(ShoppingCart::class)->totalQuantity());
         });
 
-        // Filament FileUpload / FilePond preview URLs use filesystems.disks.public.url (APP_URL + /storage).
-        // If APP_URL is still http://localhost but the site is served on another host (e.g. Herd *.test),
-        // previews never load and stay on "Loading". Point public disk URLs at the current request host.
-        $this->app->booted(function (): void {
-            if ($this->app->runningInConsole()) {
-                return;
-            }
-
-            $host = request()->getSchemeAndHttpHost();
-            if ($host === '') {
-                return;
-            }
-
-            config([
-                'filesystems.disks.public.url' => rtrim($host, '/').'/storage',
-            ]);
-        });
     }
 }

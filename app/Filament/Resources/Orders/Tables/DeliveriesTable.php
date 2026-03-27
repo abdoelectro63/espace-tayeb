@@ -2,7 +2,9 @@
 
 namespace App\Filament\Resources\Orders\Tables;
 
+use App\Models\Order;
 use App\Models\ShippingCompany;
+use App\Services\Shipping\ShippingManager;
 use App\Models\User;
 use Filament\Actions\Action;
 use Filament\Actions\BulkAction;
@@ -16,6 +18,7 @@ use Filament\Tables\Filters\Indicator;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Support\Facades\Log;
 use Livewire\Livewire;
 
 class DeliveriesTable
@@ -28,7 +31,7 @@ class DeliveriesTable
                     $query->where('delivery_man_id', auth()->id());
                 }
 
-                return $query;
+                return $query->with('orderItems.product');
             })
             ->columns([
                 TextColumn::make('number')
@@ -80,6 +83,26 @@ class DeliveriesTable
                     ->hidden(fn ($livewire): bool => ($livewire->activeTab ?? null) === 'local_delivery')
                     ->searchable(),
 
+                TextColumn::make('tracking_number')
+                    ->label('رقم التتبع')
+                    ->formatStateUsing(fn (?string $state): string => filled($state) ? $state : 'في انتظار التتبع')
+                    ->placeholder('—')
+                    ->tooltip(fn (?string $state): string => filled($state)
+                        ? ''
+                        : 'لم يُرجع المزوّد رقم التتبع في الـ JSON. يمكن أن يظهر لاحقاً في لوحة المزوّد أو عبر الويبهوك.')
+                    ->searchable()
+                    ->copyable()
+                    ->visible(fn ($livewire): bool => ($livewire->activeTab ?? null) === 'shipping_companies'),
+
+                TextColumn::make('shipping_provider_status')
+                    ->label('الحالة في شركة التوصيل')
+                    ->formatStateUsing(fn (?string $state): string => filled($state) ? $state : 'غير متوفر')
+                    ->badge()
+                    ->color(fn (?string $state): string => filled($state) ? 'info' : 'gray')
+                    ->wrap()
+                    ->searchable()
+                    ->visible(fn ($livewire): bool => ($livewire->activeTab ?? null) === 'shipping_companies'),
+
                 TextColumn::make('status')
                     ->label('الحالة')
                     ->badge()
@@ -120,11 +143,12 @@ class DeliveriesTable
                             ->toArray()
                     )
                     ->visible(fn ($livewire): bool => auth()->user()?->role !== 'delivery_man'
-                        && ($livewire->activeTab ?? null) !== 'collection'),
+                        && ($livewire->activeTab ?? null) !== 'collection'
+                        && ($livewire->activeTab ?? null) !== 'completed'),
                 Tables\Filters\Filter::make('collection_carrier')
-                    ->label('تصفية التحصيل')
+                    ->label('تصفية حسب الناقل')
                     ->visible(fn ($livewire): bool => auth()->user()?->role !== 'delivery_man'
-                        && ($livewire->activeTab ?? null) === 'collection')
+                        && in_array(($livewire->activeTab ?? null), ['collection', 'completed'], true))
                     ->form([
                         Select::make('mode')
                             ->label('البحث حسب')
@@ -249,6 +273,7 @@ class DeliveriesTable
                         $record->update([
                             'delivery_man_id' => null,
                             'shipping_company' => null,
+                            'shipping_company_id' => null,
                             'status' => 'confirmed',
                         ]);
 
@@ -345,6 +370,7 @@ class DeliveriesTable
                             $order->update([
                                 'delivery_man_id' => null,
                                 'shipping_company' => null,
+                                'shipping_company_id' => null,
                                 'status' => 'confirmed',
                             ]);
                         });
@@ -391,32 +417,158 @@ class DeliveriesTable
                     ->label('Assigner a une societe de livraison')
                     ->icon('heroicon-o-building-office-2')
                     ->form([
-                        Select::make('shipping_company')
+                        Select::make('shipping_company_id')
                             ->label('Shipping Company')
                             ->options(fn (): array => ShippingCompany::query()
                                 ->orderBy('name')
-                                ->pluck('name', 'name')
+                                ->pluck('name', 'id')
                                 ->toArray())
                             ->searchable()
                             ->preload()
                             ->required(),
                     ])
                     ->action(function (Collection $records, array $data): void {
-                        $records->each(function ($order) use ($data): void {
-                            $order->update([
-                                'shipping_company' => $data['shipping_company'],
-                                'delivery_man_id' => null,
-                                'status' => 'shipped',
+                        $shippingCompanyId = (int) ($data['shipping_company_id'] ?? 0);
+                        $shippingCompany = ShippingCompany::query()->find($shippingCompanyId);
+
+                        if (! $shippingCompany) {
+                            Notification::make()
+                                ->title('شركة الشحن غير موجودة')
+                                ->danger()
+                                ->send();
+
+                            return;
+                        }
+
+                        $eligible = $records->filter(
+                            fn (Order $order): bool => $order->status === 'confirmed'
+                        );
+
+                        if ($eligible->isEmpty()) {
+                            Notification::make()
+                                ->title('المرجو تحديد طلبيات حالتها "confirmed" فقط.')
+                                ->warning()
+                                ->send();
+
+                            return;
+                        }
+
+                        $shippingManager = app(ShippingManager::class);
+                        $success = 0;
+                        $failed = 0;
+                        $errors = [];
+                        try {
+                            $batch = $shippingManager->processMany($eligible->values(), $shippingCompanyId);
+                            $results = $batch['results'] ?? [];
+                            $batchProvider = $batch['provider'] ?? null;
+                        } catch (\Throwable $e) {
+                            Log::error('Deliveries bulk shipping batch failed before per-order loop', [
+                                'shipping_company_id' => $shippingCompanyId,
+                                'exception' => $e->getMessage(),
                             ]);
-                        });
+
+                            Notification::make()
+                                ->title('فشل مزامنة الشحن')
+                                ->body($e->getMessage())
+                                ->danger()
+                                ->send();
+
+                            return;
+                        }
+
+                        $batchOrders = $eligible->values();
+                        $batchOrderCount = $batchOrders->count();
+                        $isExpressBatch = $batchProvider === 'express_coursier';
+
+                        /** @var Order $order */
+                        foreach ($batchOrders as $batchIndex => $order) {
+                            try {
+                                $result = $results[$order->id] ?? [
+                                    'code' => 'error',
+                                    'message' => 'No result returned for this order.',
+                                    'tracking_number' => null,
+                                    'response' => [],
+                                ];
+
+                                if (($result['code'] ?? '') !== 'ok') {
+                                    $failed++;
+                                    $raw = $result['response'] ?? [];
+                                    $rawText = is_array($raw) ? json_encode($raw, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) : (string) $raw;
+                                    $apiMsg = trim((string) ($result['message'] ?? ''));
+                                    $line = "Order #{$order->id}: ".($apiMsg !== '' ? $apiMsg : 'API response is not ok.');
+                                    if ($apiMsg === '' && $rawText !== '') {
+                                        $line .= " | {$rawText}";
+                                    }
+                                    $errors[] = $line;
+                                    continue;
+                                }
+
+                                $responsePayload = is_array($result['response'] ?? null) ? $result['response'] : [];
+                                $batchIdx = $isExpressBatch ? $batchIndex : null;
+                                $batchTot = $isExpressBatch ? $batchOrderCount : null;
+
+                                $parsedTracking = $shippingManager->parseTrackingFromProviderResponseForOrder(
+                                    $responsePayload,
+                                    $order,
+                                    $batchIdx,
+                                    $batchTot,
+                                );
+                                // Prefer parsed row; `result['tracking_number']` is the same per-order value from processMany.
+                                $tracking = filled($parsedTracking)
+                                    ? $parsedTracking
+                                    : ($result['tracking_number'] ?? null);
+
+                                $providerStatus = $shippingManager->parseProviderStatusForOrder(
+                                    $responsePayload,
+                                    $order,
+                                    $batchIdx,
+                                    $batchTot,
+                                );
+
+                                $updatePayload = [
+                                    'shipping_company_id' => $shippingCompany->id,
+                                    'shipping_company' => $shippingCompany->name,
+                                    'delivery_man_id' => null,
+                                    'status' => 'shipped',
+                                    'tracking_number' => $tracking ?? $order->tracking_number,
+                                ];
+
+                                if (filled($providerStatus)) {
+                                    $updatePayload['shipping_provider_status'] = $providerStatus;
+                                }
+
+                                $order->update($updatePayload);
+
+                                if (blank($tracking)) {
+                                    Log::warning('Shipping sync OK but no tracking parsed from provider JSON', [
+                                        'order_id' => $order->id,
+                                        'shipping_company_id' => $shippingCompanyId,
+                                        'response' => $responsePayload,
+                                    ]);
+                                }
+
+                                $success++;
+                            } catch (\Throwable $e) {
+                                $failed++;
+                                $errors[] = "Order #{$order->id}: {$e->getMessage()}";
+
+                                Log::error('Deliveries bulk shipping sync failed', [
+                                    'order_id' => $order->id,
+                                    'shipping_company_id' => $shippingCompanyId,
+                                    'exception' => $e->getMessage(),
+                                ]);
+                            }
+                        }
 
                         Notification::make()
-                            ->title('تم تعيين الطلبات لشركة الشحن بنجاح')
-                            ->success()
+                            ->title("تمت مزامنة الشحن — نجح: {$success} | فشل: {$failed}")
+                            ->body($failed > 0 ? collect($errors)->take(5)->implode("\n") : null)
+                            ->{$failed > 0 ? 'warning' : 'success'}()
                             ->send();
                     })
                     ->deselectRecordsAfterCompletion()
-                    ->visible(fn (): bool => auth()->user()?->role === 'admin')
+                    ->visible(fn (): bool => auth()->user()?->role === 'admin'
+                        && (Livewire::current()?->activeTab ?? null) === 'pending')
                     ->requiresConfirmation(),
             ]);
     }

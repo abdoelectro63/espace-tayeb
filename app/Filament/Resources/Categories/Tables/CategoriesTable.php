@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Categories\Tables;
 
+use App\Models\Category;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
@@ -17,6 +18,8 @@ class CategoriesTable
             ->columns([
                 Tables\Columns\ImageColumn::make('image')
                     ->label('الصورة')
+                    ->getStateUsing(fn (Category $record): ?string => $record->imageUrl())
+                    ->defaultImageUrl(asset('images/placeholder-product.svg'))
                     ->circular(),
                 TextColumn::make('icon')
                     ->label('الأيقونة')
@@ -35,8 +38,9 @@ class CategoriesTable
                     ->dateTime()
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
-                TextColumn::make('category_id')
-                    ->numeric()
+                TextColumn::make('parent.name')
+                    ->label('التصنيف الأب')
+                    ->placeholder('—')
                     ->sortable(),
             ])
             ->filters([

@@ -1,9 +1,36 @@
-<x-layouts.store :title="$category->name" :metaDescription="'منتجات قسم '.$category->name">
+@php
+    $categoryBreadcrumbItems = [
+        ['name' => 'الرئيسية', 'url' => route('store.home')],
+    ];
+
+    if ($category->parent) {
+        $categoryBreadcrumbItems[] = [
+            'name' => $category->parent->name,
+            'url' => route('store.category', ['path' => $category->parent->storePath()]),
+        ];
+    }
+
+    $categoryBreadcrumbItems[] = [
+        'name' => $category->name,
+        'url' => route('store.category', ['path' => $category->storePath()]),
+    ];
+@endphp
+
+<x-layouts.store
+    :title="$category->seoTitle()"
+    :metaDescription="$category->seoDescription()"
+    :canonical="route('store.category', ['path' => $category->storePath()])"
+    :breadcrumbItems="$categoryBreadcrumbItems"
+>
     <div class="border-b border-zinc-200 bg-white">
         <div class="mx-auto max-w-6xl px-4 py-10 sm:px-6">
             <nav class="text-xs text-zinc-500">
                 <a href="{{ route('store.home') }}" class="hover:text-emerald-800">الرئيسية</a>
                 <span class="mx-2">/</span>
+                @if($category->parent)
+                    <a href="{{ route('store.category', ['path' => $category->parent->storePath()]) }}" class="hover:text-emerald-800">{{ $category->parent->name }}</a>
+                    <span class="mx-2">/</span>
+                @endif
                 <span class="text-zinc-800">{{ $category->name }}</span>
             </nav>
             <div class="mt-6 flex flex-wrap items-center gap-4">

@@ -4,7 +4,9 @@ use App\Http\Controllers\CartController;
 use App\Http\Controllers\CatalogMediaController;
 use App\Http\Controllers\CheckoutController;
 use App\Http\Controllers\OrderInvoiceController;
+use App\Http\Controllers\ProductController;
 use App\Http\Controllers\StoreController;
+use App\Http\Controllers\VitipsController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/catalog-media/{path}', [CatalogMediaController::class, 'show'])
@@ -12,8 +14,6 @@ Route::get('/catalog-media/{path}', [CatalogMediaController::class, 'show'])
     ->name('catalog.media');
 
 Route::get('/', [StoreController::class, 'index'])->name('store.home');
-Route::get('/categories/{slug}', [StoreController::class, 'category'])->name('store.category');
-Route::get('/products/{slug}', [StoreController::class, 'product'])->name('store.product');
 
 Route::get('/cart', [CartController::class, 'index'])->name('store.cart');
 Route::get('/cart/drawer', [CartController::class, 'drawer'])->name('store.cart.drawer');
@@ -28,4 +28,14 @@ Route::delete('/cart/{product}', [CartController::class, 'destroy'])->name('stor
 Route::middleware('auth')->group(function () {
     Route::get('/invoices/orders/{order}', [OrderInvoiceController::class, 'show'])
         ->name('invoices.orders.show');
+    Route::get('/vitips/orders', [VitipsController::class, 'orders'])
+        ->name('vitips.orders');
 });
+
+Route::get('/{categoryPath}/{product:slug}', [ProductController::class, 'show'])
+    ->where('categoryPath', '.*')
+    ->name('product.show');
+
+Route::get('/{path}', [StoreController::class, 'category'])
+    ->where('path', '.*')
+    ->name('store.category');

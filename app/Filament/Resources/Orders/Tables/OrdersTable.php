@@ -2,8 +2,13 @@
 
 namespace App\Filament\Resources\Orders\Tables;
 
+use App\Models\Order;
 use App\Models\Product;
+use App\Models\ShippingCompany;
+use App\Services\Shipping\ShippingManager;
+use App\Services\VitipsService;
 use Carbon\Carbon;
+use Filament\Actions\Action;
 use Filament\Actions\BulkAction;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteAction;
@@ -16,6 +21,7 @@ use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Tables;
+use Filament\Notifications\Notification;
 use Filament\Tables\Columns\SelectColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Columns\TextInputColumn;
@@ -23,6 +29,8 @@ use Filament\Tables\Filters\Indicator;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Support\Facades\Log;
+use Livewire\Livewire;
 
 class OrdersTable
 {
@@ -43,11 +51,21 @@ class OrdersTable
                 TextInputColumn::make('shipping_address')->label('العنوان'),
                 TextColumn::make('products')
                     ->label('المنتجات')
-                    ->state(fn ($record): string => $record->orderItems
-                        ->map(fn ($item): ?string => $item->product?->name)
-                        ->filter()
-                        ->unique()
-                        ->implode(', '))
+                    ->state(function ($record): string {
+                        $products = $record->orderItems
+                            ->map(fn ($item): ?string => $item->product?->name)
+                            ->filter()
+                            ->unique()
+                            ->values();
+
+                        if ($products->count() <= 1) {
+                            return (string) ($products->first() ?? '—');
+                        }
+
+                        return 'عدة منتجات';
+                    })
+                    ->badge()
+                    ->color(fn (string $state): string => $state === 'عدة منتجات' ? 'warning' : 'gray')
                     ->wrap(),
                 TextColumn::make('total_price')->label('المجموع')->money('MAD'),
 
@@ -244,7 +262,19 @@ class OrdersTable
                     ]),
             ])
             ->recordActions([
-                DeleteAction::make(),
+                Action::make('showProducts')
+                    ->label('عدة منتجات')
+                    ->icon('heroicon-o-squares-2x2')
+                    ->color('warning')
+                    ->visible(fn ($record): bool => $record->orderItems->count() > 1)
+                    ->modalHeading('تفاصيل المنتجات')
+                    ->modalSubmitAction(false)
+                    ->modalCancelActionLabel('إغلاق')
+                    ->extraAttributes(['style' => 'background-color:#ff751f;border-color:#ff751f;color:#fff'])
+                    ->modalContent(fn ($record) => view('filament.orders.products-modal', [
+                        'items' => $record->orderItems,
+                    ])),
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   DeleteAction::make(),
                 RestoreAction::make()
                     ->visible(fn ($record): bool => method_exists($record, 'trashed') && $record->trashed()),
                 ForceDeleteAction::make()
@@ -282,6 +312,180 @@ class OrdersTable
                         ->modalHeading('تصدير الطلبات المختارة')
                         ->modalDescription('هل أنت متأكد من رغبتك في تحميل بيانات الطلبات التي قمت بتحديدها؟')
                         ->modalSubmitActionLabel('تحميل الآن'),
+
+                    BulkAction::make('assignToShipping')
+                        ->label('Assign to Shipping Company')
+                        ->icon('heroicon-o-truck')
+                        ->color('primary')
+                        ->visible(fn (): bool => (Livewire::current()?->activeTab ?? null) === 'pending')
+                        ->form([
+                            Select::make('shipping_company_id')
+                                ->label('Select Company')
+                                ->options(fn (): array => ShippingCompany::query()
+                                    ->orderBy('name')
+                                    ->pluck('name', 'id')
+                                    ->toArray())
+                                ->searchable()
+                                ->preload()
+                                ->required(),
+                        ])
+                        ->deselectRecordsAfterCompletion()
+                        ->requiresConfirmation()
+                        ->action(function (Collection $records, array $data): void {
+                            $shippingCompanyId = (int) ($data['shipping_company_id'] ?? 0);
+                            $shippingCompany = ShippingCompany::query()->find($shippingCompanyId);
+
+                            if (! $shippingCompany) {
+                                Notification::make()
+                                    ->title('شركة الشحن غير موجودة')
+                                    ->danger()
+                                    ->send();
+
+                                return;
+                            }
+
+                            $success = 0;
+                            $failed = 0;
+                            $errors = [];
+                            $shippingManager = app(ShippingManager::class);
+
+                            /** @var \App\Models\Order $order */
+                            foreach ($records as $order) {
+                                try {
+                                    $result = $shippingManager->process($order, $shippingCompanyId);
+
+                                    if (($result['code'] ?? '') !== 'ok') {
+                                        $failed++;
+                                        $errors[] = "Order #{$order->id}: ".($result['message'] ?: 'Unknown API response.');
+                                        continue;
+                                    }
+
+                                    $order->update([
+                                        'status' => 'shipped',
+                                        'shipping_company_id' => $shippingCompany->id,
+                                        'shipping_company' => $shippingCompany->name,
+                                        'tracking_number' => $result['tracking_number'] ?? $order->tracking_number,
+                                    ]);
+
+                                    $success++;
+                                } catch (\Throwable $e) {
+                                    $failed++;
+                                    $errors[] = "Order #{$order->id}: {$e->getMessage()}";
+                                    Log::error('Assign to shipping failed', [
+                                        'order_id' => $order->id,
+                                        'shipping_company_id' => $shippingCompanyId,
+                                        'exception' => $e->getMessage(),
+                                    ]);
+                                }
+                            }
+
+                            $notification = Notification::make()
+                                ->title("Shipped: {$success} | Failed: {$failed}");
+
+                            if ($failed > 0) {
+                                $notification
+                                    ->warning()
+                                    ->body(collect($errors)->take(5)->implode("\n"));
+                            } else {
+                                $notification->success();
+                            }
+
+                            $notification->send();
+                        }),
+
+                    // 3. Send selected orders to Vitips Express
+                    BulkAction::make('sendToVitips')
+                        ->label('إرسال للموزع')
+                        ->icon('heroicon-o-truck')
+                        ->color('success')
+                        ->visible(fn (Collection $records): bool => $records->isNotEmpty()
+                            && $records->contains(fn (Order $order) => blank($order->tracking_number) && $order->status === 'confirmed'))
+                        ->form([
+                            Select::make('provider')
+                                ->label('اختر شركة التوصيل')
+                                ->options([
+                                    'vitips' => 'Vitips Express',
+                                    'express_coursier' => 'Express Coursier',
+                                ])
+                                ->default('vitips')
+                                ->native(false)
+                                ->required(),
+                        ])
+                        ->deselectRecordsAfterCompletion()
+                        ->requiresConfirmation()
+                        ->modalHeading('إرسال للموزع')
+                        ->modalDescription('اختر شركة التوصيل ثم قم بإرسال الطلبات. سيتم إضافة رقم التتبع للطلبات التي لا تحتوي على رقم تتبع.')
+                        ->action(function (Collection $records, array $data): void {
+                            $provider = (string) ($data['provider'] ?? 'vitips');
+
+                            if ($provider !== 'vitips') {
+                                Notification::make()
+                                    ->title('تكامل Express Coursier قادم قريبا')
+                                    ->warning()
+                                    ->send();
+
+                                return;
+                            }
+
+                            $success = 0;
+                            $failed = 0;
+
+                            /** @var \App\Models\Order $order */
+                            $targets = $records->filter(fn (Order $order) => blank($order->tracking_number) && $order->status === 'confirmed');
+
+                            if ($targets->isEmpty()) {
+                                Notification::make()
+                                    ->title('لا توجد طلبات مؤهلة للإرسال (جميعها لديها رقم تتبع).')
+                                    ->warning()
+                                    ->send();
+
+                                return;
+                            }
+
+                            $vitips = app(VitipsService::class);
+
+                            $targets->each(function (Order $order) use (&$success, &$failed, $vitips): void {
+                                try {
+                                    $productNames = $order->orderItems
+                                        ->map(fn ($item) => $item->product?->name)
+                                        ->filter()
+                                        ->unique()
+                                        ->values()
+                                        ->implode(', ');
+
+                                    $itemsCount = (int) $order->orderItems->sum('quantity');
+
+                                    $payload = [
+                                        'customer_name' => (string) $order->customer_name,
+                                        'customer_phone' => (string) $order->customer_phone,
+                                        'shipping_address' => (string) $order->shipping_address,
+                                        'total_price' => (string) $order->total_price,
+                                        'product_names' => $productNames,
+                                        'items_count' => (string) $itemsCount,
+                                        'id' => (string) $order->id,
+                                    ];
+
+                                    $trackingNumber = $vitips->createShipment($payload);
+
+                                    $order->update([
+                                        'tracking_number' => $trackingNumber,
+                                    ]);
+
+                                    $success++;
+                                } catch (\Throwable $e) {
+                                    $failed++;
+                                    Log::error('Vitips bulk shipment sync failed', [
+                                        'order_id' => $order->id,
+                                        'exception' => $e->getMessage(),
+                                    ]);
+                                }
+                            });
+
+                            Notification::make()
+                                ->title("تم الإرسال: {$success} طلب/طلبات، فشل: {$failed} طلب/طلبات")
+                                ->success()
+                                ->send();
+                        }),
                 ]),
             ]);
     }

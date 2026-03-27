@@ -40,7 +40,7 @@
                             data-qty="{{ $line['quantity'] }}"
                             data-stock="{{ $product->maxOrderableQuantity() }}"
                         >
-                            <a href="{{ route('store.product', $product->slug) }}" class="shrink-0">
+                            <a href="{{ route('product.show', $product->seoRouteParams()) }}" class="shrink-0">
                                 <img
                                     src="{{ $product->mainImageUrl() }}"
                                     alt="{{ $product->name }}"
@@ -48,7 +48,7 @@
                                 >
                             </a>
                             <div class="min-w-0 flex-1">
-                                <a href="{{ route('store.product', $product->slug) }}" class="font-semibold text-zinc-900 hover:text-emerald-800">
+                                <a href="{{ route('product.show', $product->seoRouteParams()) }}" class="font-semibold text-zinc-900 hover:text-emerald-800">
                                     {{ $product->name }}
                                 </a>
                                 @if($product->free_shipping)

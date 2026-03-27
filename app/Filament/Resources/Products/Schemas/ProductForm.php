@@ -2,7 +2,7 @@
 
 namespace App\Filament\Resources\Products\Schemas;
 
-use App\Support\ProductImageOptimizer;
+use App\Support\ImageOptimizer;
 use Filament\Forms;
 use Filament\Forms\Components\BaseFileUpload;
 use Filament\Schemas\Components\Section;
@@ -102,7 +102,7 @@ class ProductForm
                             ->directory('products/titles')
                             ->imageEditor()
                             ->saveUploadedFileUsing(function (BaseFileUpload $component, TemporaryUploadedFile $file): ?string {
-                                return ProductImageOptimizer::processAndStore($file, 'titles');
+                                return ImageOptimizer::processAndStore($file, 'products/titles');
                             })
                             ->helperText('تُحوَّل تلقائياً إلى WebP، بعرض أقصى 1000px وجودة 80%.')
                             ->required(fn (?Model $record): bool => $record === null),
@@ -117,7 +117,7 @@ class ProductForm
                             ->appendFiles()
                             ->directory('products/gallery')
                             ->saveUploadedFileUsing(function (BaseFileUpload $component, TemporaryUploadedFile $file): ?string {
-                                return ProductImageOptimizer::processAndStore($file, 'gallery');
+                                return ImageOptimizer::processAndStore($file, 'products/gallery');
                             })
                             ->helperText('نفس المعالجة: WebP، عرض أقصى 1000px، جودة 80%.')
                             ->columnSpanFull(),

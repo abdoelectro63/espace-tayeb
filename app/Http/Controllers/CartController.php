@@ -125,7 +125,7 @@ class CartController extends Controller
                 'stock' => $product->maxOrderableQuantity(),
                 'track_stock' => (bool) $product->track_stock,
                 'line_total' => $line['line_total'],
-                'product_url' => route('store.product', $product->slug),
+                'product_url' => route('product.show', $product->seoRouteParams()),
                 'free_shipping' => (bool) $product->free_shipping,
             ];
         })->values()->all();

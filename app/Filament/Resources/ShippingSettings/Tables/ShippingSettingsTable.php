@@ -12,6 +12,10 @@ class ShippingSettingsTable
     {
         return $table
             ->columns([
+                Tables\Columns\ImageColumn::make('logo_path')
+                    ->label('Logo')
+                    ->disk('public')
+                    ->circular(),
                 Tables\Columns\TextColumn::make('casablanca_fee')
                     ->label('الدار البيضاء')
                     ->suffix(' MAD')
@@ -20,6 +24,13 @@ class ShippingSettingsTable
                     ->label('مدن أخرى')
                     ->suffix(' MAD')
                     ->sortable(),
+                Tables\Columns\ColorColumn::make('header_bg_color')
+                    ->label('لون الخلفية'),
+                Tables\Columns\ColorColumn::make('menu_text_color')
+                    ->label('لون النص'),
+                Tables\Columns\ImageColumn::make('hero_banner_path')
+                    ->label('بانر الرئيسية')
+                    ->disk('public'),
                 Tables\Columns\TextColumn::make('updated_at')
                     ->label('آخر تحديث')
                     ->dateTime()

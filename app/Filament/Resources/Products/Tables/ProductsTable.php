@@ -2,13 +2,20 @@
 
 namespace App\Filament\Resources\Products\Tables;
 
+use App\Exports\ProductExampleExport;
+use App\Imports\ProductImport;
 use App\Models\Product;
+use Filament\Actions\Action;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
+use Filament\Forms\Components\FileUpload;
+use Filament\Notifications\Notification;
 use Filament\Tables;
 use Filament\Tables\Table;
+use Illuminate\Support\Facades\Storage;
+use Maatwebsite\Excel\Facades\Excel;
 
 class ProductsTable
 {
@@ -23,9 +30,17 @@ class ProductsTable
                     ->circular(), // يعرض الصور بشكل دائري */
                 Tables\Columns\ImageColumn::make('main_image')
                     ->label('صورة المنتج الرئيسية')
+                    ->getStateUsing(fn (Product $record): string => $record->mainImageUrl())
+                    ->defaultImageUrl(asset('images/placeholder-product.svg'))
                     ->circular(),
                 Tables\Columns\TextColumn::make('name')
                     ->label('اسم المنتج')
+                    ->searchable()
+                    ->sortable(),
+                Tables\Columns\TextColumn::make('code')
+                    ->label('Code Produit')
+                    ->badge()
+                    ->color('info')
                     ->searchable()
                     ->sortable(),
 
@@ -70,6 +85,54 @@ class ProductsTable
             ->actions([
                 EditAction::make(),
                 DeleteAction::make(),
+            ])
+            ->headerActions([
+                Action::make('importProducts')
+                    ->label('Import Products')
+                    ->icon('heroicon-o-arrow-up-tray')
+                    ->color('warning')
+                    ->button()
+                    ->extraAttributes(['style' => 'background-color:#ff751f;border-color:#ff751f;color:#fff'])
+                    ->form([
+                        FileUpload::make('file')
+                            ->label('Excel / CSV')
+                            ->disk('local')
+                            ->directory('imports')
+                            ->acceptedFileTypes([
+                                'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                                'application/vnd.ms-excel',
+                                'text/csv',
+                                'text/plain',
+                            ])
+                            ->required(),
+                    ])
+                    ->action(function (array $data): void {
+                        $path = (string) ($data['file'] ?? '');
+                        if ($path === '' || ! Storage::disk('local')->exists($path)) {
+                            Notification::make()
+                                ->title('No file found to import.')
+                                ->warning()
+                                ->send();
+
+                            return;
+                        }
+
+                        $import = new ProductImport;
+                        Excel::import($import, $path, 'local');
+
+                        Notification::make()
+                            ->title("Import completed: {$import->importedCount()} row(s), {$import->failuresCount()} failure(s).")
+                            ->warning()
+                            ->send();
+                    }),
+
+                Action::make('downloadExample')
+                    ->label('Download Example')
+                    ->icon('heroicon-o-document-arrow-down')
+                    ->color('warning')
+                    ->button()
+                    ->extraAttributes(['style' => 'background-color:#ff751f;border-color:#ff751f;color:#fff'])
+                    ->action(fn () => Excel::download(new ProductExampleExport, 'product_example.xlsx')),
             ])
             ->bulkActions([
                 BulkActionGroup::make([

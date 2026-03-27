@@ -13,6 +13,17 @@ class EditOrder extends EditRecord
 {
     protected static string $resource = OrderResource::class;
 
+    /**
+     * @param  array<string, mixed>  $data
+     * @return array<int, array<string, mixed>>
+     */
+    protected function resolveOrderItemsForCalculation(array $data): array
+    {
+        $items = $data['orderItems'] ?? ($this->data['orderItems'] ?? []);
+
+        return is_array($items) ? $items : [];
+    }
+
     protected function mutateFormDataBeforeFill(array $data): array
     {
         $record = $this->getRecord();
@@ -37,7 +48,7 @@ class EditOrder extends EditRecord
 
     protected function mutateFormDataBeforeSave(array $data): array
     {
-        $items = $data['orderItems'] ?? [];
+        $items = $this->resolveOrderItemsForCalculation($data);
         $zone = (string) ($data['shipping_zone'] ?? 'casablanca');
         $data['shipping_fee'] = ShippingCalculator::feeForAdminOrderItems($items, $zone);
         $data['total_price'] = round(
@@ -46,6 +57,27 @@ class EditOrder extends EditRecord
         );
 
         return $data;
+    }
+
+    protected function afterSave(): void
+    {
+        $record = $this->getRecord();
+        $record->loadMissing('orderItems');
+
+        $itemsForCalc = $record->orderItems->map(fn ($item): array => [
+            'product_id' => $item->product_id,
+            'quantity' => $item->quantity,
+            'unit_price' => $item->unit_price,
+        ])->all();
+
+        $zone = (string) ($record->shipping_zone ?? 'casablanca');
+        $shippingFee = ShippingCalculator::feeForAdminOrderItems($itemsForCalc, $zone);
+        $total = round(OrderForm::calculateTotalFromItems($itemsForCalc) + $shippingFee, 2);
+
+        $record->update([
+            'shipping_fee' => $shippingFee,
+            'total_price' => $total,
+        ]);
     }
 
     protected function getHeaderActions(): array

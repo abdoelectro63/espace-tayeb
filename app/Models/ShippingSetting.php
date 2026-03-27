@@ -9,6 +9,11 @@ class ShippingSetting extends Model
     protected $fillable = [
         'casablanca_fee',
         'other_cities_fee',
+        'logo_path',
+        'header_bg_color',
+        'menu_text_color',
+        'hero_banner_path',
+        'hero_banner_link',
     ];
 
     protected function casts(): array
@@ -29,6 +34,11 @@ class ShippingSetting extends Model
         return static::query()->create([
             'casablanca_fee' => 20,
             'other_cities_fee' => 40,
+            'logo_path' => null,
+            'header_bg_color' => '#ffffff',
+            'menu_text_color' => '#0f172a',
+            'hero_banner_path' => null,
+            'hero_banner_link' => null,
         ]);
     }
 }

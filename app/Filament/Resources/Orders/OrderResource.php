@@ -2,7 +2,7 @@
 
 namespace App\Filament\Resources\Orders;
 
-use App\Filament\Resources\Orders\Pages;
+use App\Filament\Resources\Orders\RelationManagers\OrderItemsRelationManager;
 use App\Filament\Resources\Orders\Schemas\OrderForm;
 use App\Filament\Resources\Orders\Tables\OrdersTable;
 use App\Models\Order;
@@ -21,7 +21,9 @@ class OrderResource extends Resource
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedShoppingBag;
 
     protected static ?string $navigationLabel = 'الطلبيات';
+
     protected static ?string $modelLabel = 'طلبية';
+
     protected static ?string $pluralModelLabel = 'الطلبيات';
 
     // إخفاء المحذوفات من البحث العام والاستعلامات الافتراضية
@@ -53,9 +55,15 @@ class OrderResource extends Resource
         ];
     }
 
+    public static function getRelations(): array
+    {
+        return [
+            OrderItemsRelationManager::class,
+        ];
+    }
+
     public static function canViewAny(): bool
     {
         return in_array(auth()->user()?->role, ['admin', 'confirmation'], true);
     }
-    
 }

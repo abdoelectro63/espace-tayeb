@@ -35,4 +35,9 @@ return [
         ],
     ],
 
+    'vitips' => [
+        'token' => env('VITIPS_TOKEN'),
+        'base_url' => env('VITIPS_BASE_URL', 'https://app.vitipsexpress.com/api/v1'),
+    ],
+
 ];

@@ -8,6 +8,7 @@ use App\Filament\Resources\Products\Pages\ListProducts;
 use App\Filament\Resources\Products\Schemas\ProductForm;
 use App\Filament\Resources\Products\Tables\ProductsTable;
 use App\Models\Product;
+use App\Support\ImageOptimizer;
 use BackedEnum;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
@@ -15,7 +16,7 @@ use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
 
 /**
- * Product image FileUpload fields are configured in {@see ProductForm} and optimized with {@see \App\Support\ProductImageOptimizer}.
+ * Product image FileUpload fields are configured in {@see ProductForm} and optimized with {@see ImageOptimizer}.
  */
 class ProductResource extends Resource
 {
