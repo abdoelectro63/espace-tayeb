@@ -2,23 +2,40 @@
 
 namespace App\Filament\Resources\Orders\Tables;
 
+use App\Filament\Resources\ShippingInvoiceImports\ShippingInvoiceImportResource;
 use App\Models\Order;
+use App\Models\OrderCarrierCitySelection;
 use App\Models\ShippingCompany;
-use App\Services\Shipping\ShippingManager;
+use App\Models\ShippingCompanyCity;
 use App\Models\User;
+use App\Services\Shipping\ShippingCompanyCityMatcher;
+use App\Services\Shipping\ShippingInvoiceFileReader;
+use App\Services\Shipping\ShippingInvoiceImportRecorder;
+use App\Services\Shipping\ShippingInvoiceImportRecordResult;
+use App\Services\Shipping\ShippingManager;
 use Filament\Actions\Action;
 use Filament\Actions\BulkAction;
 use Filament\Actions\EditAction;
+use Filament\Forms\Components\FileUpload;
+use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
+use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\Utilities\Get;
+use Filament\Schemas\Components\Utilities\Set;
 use Filament\Tables;
+use Filament\Tables\Actions\HeaderActionsPosition;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Columns\TextInputColumn;
 use Filament\Tables\Filters\Indicator;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\HtmlString;
+use Illuminate\Support\Str;
 use Livewire\Livewire;
 
 class DeliveriesTable
@@ -31,8 +48,11 @@ class DeliveriesTable
                     $query->where('delivery_man_id', auth()->id());
                 }
 
-                return $query->with('orderItems.product');
+                return $query->with(['orderItems.product']);
             })
+            ->checkIfRecordIsSelectableUsing(
+                fn (Order $record): bool => ! self::isDeliveredAndPaid($record)
+            )
             ->columns([
                 TextColumn::make('number')
                     ->label('رقم الطلبية')
@@ -83,16 +103,26 @@ class DeliveriesTable
                     ->hidden(fn ($livewire): bool => ($livewire->activeTab ?? null) === 'local_delivery')
                     ->searchable(),
 
-                TextColumn::make('tracking_number')
+                TextInputColumn::make('tracking_number')
                     ->label('رقم التتبع')
-                    ->formatStateUsing(fn (?string $state): string => filled($state) ? $state : 'في انتظار التتبع')
-                    ->placeholder('—')
-                    ->tooltip(fn (?string $state): string => filled($state)
-                        ? ''
-                        : 'لم يُرجع المزوّد رقم التتبع في الـ JSON. يمكن أن يظهر لاحقاً في لوحة المزوّد أو عبر الويبهوك.')
+                    ->placeholder('في انتظار التتبع')
+                    ->tooltip('تعديل يدوي إذا لزم. إن وُجد فارغاً: قد يُكمَل لاحقاً من المزوّد أو الويبهوك.')
+                    ->disabled(fn (Order $record): bool => self::isDeliveredAndPaid($record))
                     ->searchable()
-                    ->copyable()
                     ->visible(fn ($livewire): bool => ($livewire->activeTab ?? null) === 'shipping_companies'),
+
+                TextColumn::make('tracking_number_readonly')
+                    ->label('رقم التتبع')
+                    ->state(fn (Order $record): string => filled($record->tracking_number) ? (string) $record->tracking_number : '—')
+                    ->searchable(
+                        true,
+                        fn (Builder $query, string $search): Builder => $query->where('tracking_number', 'like', '%'.$search.'%'),
+                    )
+                    ->copyable()
+                    ->visible(fn ($livewire): bool => in_array(($livewire->activeTab ?? null), [
+                        'completed',
+                        'delivered_paid',
+                    ], true)),
 
                 TextColumn::make('shipping_provider_status')
                     ->label('الحالة في شركة التوصيل')
@@ -259,7 +289,8 @@ class DeliveriesTable
                                 ->default(fn ($record) => $record->total_price)
                                 ->nullable(),
                         ])
-                    ->visible(fn (): bool => in_array(auth()->user()?->role, ['admin', 'delivery_man'], true)),
+                    ->visible(fn ($record): bool => in_array(auth()->user()?->role, ['admin', 'delivery_man'], true)
+                        && ! self::isDeliveredAndPaid($record)),
 
                 Action::make('unsyncFromDelivery')
                     ->label('إلغاء من التوصيل')
@@ -268,7 +299,8 @@ class DeliveriesTable
                     ->requiresConfirmation()
                     ->visible(fn ($record): bool => in_array(auth()->user()?->role, ['admin', 'confirmation'], true)
                         && in_array($record->status, ['confirmed', 'shipped', 'no_response', 'cancelled', 'refuse', 'reporter'], true)
-                        && (filled($record->delivery_man_id) || filled($record->shipping_company)))
+                        && (filled($record->delivery_man_id) || filled($record->shipping_company))
+                        && ! in_array(Livewire::current()?->activeTab ?? null, ['collection', 'completed'], true))
                     ->action(function ($record): void {
                         $record->update([
                             'delivery_man_id' => null,
@@ -351,7 +383,8 @@ class DeliveriesTable
                             ->send();
                     })
                     ->deselectRecordsAfterCompletion()
-                    ->visible(fn (): bool => auth()->user()?->role === 'admin')
+                    ->visible(fn (): bool => auth()->user()?->role === 'admin'
+                        && ! in_array(Livewire::current()?->activeTab ?? null, ['collection', 'completed'], true))
                     ->requiresConfirmation(),
 
                 BulkAction::make('unsyncFromDelivery')
@@ -359,7 +392,8 @@ class DeliveriesTable
                     ->icon('heroicon-o-arrow-uturn-left')
                     ->color('danger')
                     ->deselectRecordsAfterCompletion()
-                    ->visible(fn (): bool => auth()->user()?->role === 'admin')
+                    ->visible(fn (): bool => auth()->user()?->role === 'admin'
+                        && ! in_array(Livewire::current()?->activeTab ?? null, ['collection', 'completed'], true))
                     ->requiresConfirmation()
                     ->action(function (Collection $records): void {
                         $records->each(function ($order): void {
@@ -416,17 +450,275 @@ class DeliveriesTable
                 BulkAction::make('assignShippingCompany')
                     ->label('Assigner a une societe de livraison')
                     ->icon('heroicon-o-building-office-2')
-                    ->form([
-                        Select::make('shipping_company_id')
-                            ->label('Shipping Company')
-                            ->options(fn (): array => ShippingCompany::query()
-                                ->orderBy('name')
-                                ->pluck('name', 'id')
-                                ->toArray())
-                            ->searchable()
-                            ->preload()
-                            ->required(),
-                    ])
+                    ->modalWidth('5xl')
+                    ->modalHeading('مراجعة المدن ثم المزامنة')
+                    ->modalDescription('عند وجود قائمة مدن لشركة الشحن: الطلبيات المتطابقة تُرسل تلقائياً؛ يظهر هنا فقط ما يحتاج تصحيح المدينة.')
+                    ->form(function (): array {
+                        $livewire = Livewire::current();
+                        if ($livewire === null || ! method_exists($livewire, 'getSelectedTableRecords')) {
+                            return [
+                                Placeholder::make('sync_error')
+                                    ->label('')
+                                    ->content('تعذر تحميل الطلبيات المحددة.'),
+                            ];
+                        }
+
+                        /** @var Collection<int, Order> $records */
+                        $records = $livewire->getSelectedTableRecords();
+                        $records->loadMissing('orderItems.product');
+                        $matcher = app(ShippingCompanyCityMatcher::class);
+
+                        $fields = [
+                            Select::make('shipping_company_id')
+                                ->label('شركة الشحن')
+                                ->options(fn (): array => ShippingCompany::query()
+                                    ->orderBy('name')
+                                    ->pluck('name', 'id')
+                                    ->toArray())
+                                ->searchable()
+                                ->preload()
+                                ->required()
+                                ->live()
+                                ->afterStateUpdated(function (Set $set, $state) use ($records, $matcher): void {
+                                    $company = ShippingCompany::query()->find((int) $state);
+                                    if ($company === null) {
+                                        $set('order_cities', []);
+
+                                        return;
+                                    }
+
+                                    $presets = [];
+                                    foreach ($records as $order) {
+                                        $match = $matcher->findMatchingCity($company, (string) $order->city);
+                                        $presets[$order->id] = $match?->id;
+                                    }
+                                    $set('order_cities', $presets);
+                                }),
+
+                            Placeholder::make('city_match_summary')
+                                ->label('ملخص المطابقة')
+                                ->content(function (Get $get) use ($records, $matcher): HtmlString {
+                                    $cid = $get('shipping_company_id');
+                                    if (! $cid) {
+                                        return new HtmlString('<span class="text-gray-500 text-sm">اختر شركة الشحن لعرض ملخص المطابقة.</span>');
+                                    }
+
+                                    $company = ShippingCompany::query()->find((int) $cid);
+                                    if ($company === null) {
+                                        return new HtmlString('');
+                                    }
+
+                                    if (! $company->cities()->active()->exists()) {
+                                        return new HtmlString(
+                                            '<p class="text-sm text-gray-600 dark:text-gray-400">لا توجد مدن مسجّلة لهذه الشركة — يُستخدم حقل المدينة من الطلبية كما هو عند المزامنة.</p>'
+                                        );
+                                    }
+
+                                    $auto = 0;
+                                    $need = 0;
+                                    foreach ($records as $order) {
+                                        if ($matcher->findMatchingCity($company, (string) $order->city) !== null) {
+                                            $auto++;
+                                        } else {
+                                            $need++;
+                                        }
+                                    }
+
+                                    if ($need === 0) {
+                                        return new HtmlString(
+                                            '<div class="rounded-lg border border-success-200 bg-success-50/80 p-3 text-sm dark:border-success-900/40 dark:bg-success-950/30">'.
+                                            "<p class=\"font-semibold text-success-800 dark:text-success-300\">جميع المدن متطابقة مع القائمة ({$auto} طلبية).</p>".
+                                            '<p class="mt-1 text-success-700 dark:text-success-400">اضغط «تأكيد» لإرسال الكل إلى شركة الشحن.</p>'.
+                                            '</div>'
+                                        );
+                                    }
+
+                                    return new HtmlString(
+                                        '<div class="rounded-lg border border-amber-200 bg-amber-50/80 p-3 text-sm dark:border-amber-900/40 dark:bg-amber-950/30">'.
+                                        "<p><span class=\"font-semibold text-gray-800 dark:text-gray-200\">تطابق تلقائي:</span> {$auto} طلبية — تُرسل دون اختيار إضافي.</p>".
+                                        "<p class=\"mt-2\"><span class=\"font-semibold text-amber-800 dark:text-amber-300\">يحتاج تصحيح المدينة:</span> {$need} — اختر المدينة الصحيحة لكل طلبية أدناه.</p>".
+                                        '</div>'
+                                    );
+                                })
+                                ->columnSpanFull(),
+
+                            Placeholder::make('city_fix_column_headers')
+                                ->label('')
+                                ->content(function (Get $get) use ($records, $matcher): HtmlString {
+                                    $cid = $get('shipping_company_id');
+                                    if (! $cid) {
+                                        return new HtmlString('');
+                                    }
+
+                                    $company = ShippingCompany::query()->find((int) $cid);
+                                    if ($company === null || ! $company->cities()->active()->exists()) {
+                                        return new HtmlString('');
+                                    }
+
+                                    $need = 0;
+                                    foreach ($records as $order) {
+                                        if ($matcher->findMatchingCity($company, (string) $order->city) === null) {
+                                            $need++;
+                                        }
+                                    }
+
+                                    if ($need === 0) {
+                                        return new HtmlString('');
+                                    }
+
+                                    return new HtmlString(
+                                        '<div class="mb-2 hidden grid-cols-12 gap-2 border-b border-gray-200 pb-2 text-xs font-semibold text-gray-600 lg:grid dark:border-gray-600 dark:text-gray-400">'.
+                                        '<span class="col-span-2">رقم الطلبية</span>'.
+                                        '<span class="col-span-1">الحالة</span>'.
+                                        '<span class="col-span-2">المدينة</span>'.
+                                        '<span class="col-span-2">الزبون</span>'.
+                                        '<span class="col-span-1">الهاتف</span>'.
+                                        '<span class="col-span-1">المجموع</span>'.
+                                        '<span class="col-span-1">المنتجات</span>'.
+                                        '<span class="col-span-2">اختر اسم مدينة صحيح</span>'.
+                                        '</div>'
+                                    );
+                                })
+                                ->columnSpanFull(),
+                        ];
+
+                        foreach ($records as $order) {
+                            $productsPlain = $order->orderItems
+                                ->map(function ($item): string {
+                                    $name = trim((string) ($item->product?->name ?? ''));
+                                    if ($name === '') {
+                                        return '';
+                                    }
+                                    $qty = max(1, (int) ($item->quantity ?? 1));
+
+                                    return $name.' × '.$qty;
+                                })
+                                ->filter()
+                                ->implode('، ');
+                            if ($productsPlain === '') {
+                                $productsPlain = '—';
+                            }
+
+                            $productsShort = Str::limit($productsPlain, 48, '…');
+
+                            $statusLabel = match ((string) $order->status) {
+                                'pending' => 'في الانتظار',
+                                'confirmed' => 'مؤكّد',
+                                'no_response' => 'لا يجيب',
+                                'cancelled' => 'ملغى',
+                                'refuse' => 'مرفوض',
+                                'reporter' => 'مؤجّل',
+                                'shipped' => 'مُرسل',
+                                'delivered' => 'مُسلّم',
+                                default => (string) $order->status,
+                            };
+
+                            $priceDisplay = number_format((float) ($order->total_price ?? 0), 2, '.', ' ').' MAD';
+
+                            $fields[] = Section::make()
+                                ->heading('')
+                                ->schema([
+                                    TextInput::make('ship_row_'.$order->id.'_num')
+                                        ->label('رقم الطلبية')
+                                        ->default($order->number)
+                                        ->disabled()
+                                        ->dehydrated(false)
+                                        ->columnSpan(['default' => 12, 'lg' => 2]),
+                                    TextInput::make('ship_row_'.$order->id.'_status')
+                                        ->label('الحالة')
+                                        ->default($statusLabel)
+                                        ->disabled()
+                                        ->dehydrated(false)
+                                        ->columnSpan(['default' => 12, 'lg' => 1]),
+                                    TextInput::make('ship_row_'.$order->id.'_city_order')
+                                        ->label('المدينة (الطلبية)')
+                                        ->default(filled($order->city) ? $order->city : '—')
+                                        ->disabled()
+                                        ->dehydrated(false)
+                                        ->columnSpan(['default' => 12, 'lg' => 2]),
+                                    TextInput::make('ship_row_'.$order->id.'_client')
+                                        ->label('الزبون')
+                                        ->default(filled($order->customer_name) ? $order->customer_name : '—')
+                                        ->disabled()
+                                        ->dehydrated(false)
+                                        ->columnSpan(['default' => 12, 'lg' => 2]),
+                                    TextInput::make('ship_row_'.$order->id.'_phone')
+                                        ->label('الهاتف')
+                                        ->default(filled($order->customer_phone) ? $order->customer_phone : '—')
+                                        ->disabled()
+                                        ->dehydrated(false)
+                                        ->columnSpan(['default' => 12, 'lg' => 1]),
+                                    TextInput::make('ship_row_'.$order->id.'_price')
+                                        ->label('المجموع')
+                                        ->default($priceDisplay)
+                                        ->disabled()
+                                        ->dehydrated(false)
+                                        ->columnSpan(['default' => 12, 'lg' => 1]),
+                                    TextInput::make('ship_row_'.$order->id.'_products')
+                                        ->label('المنتجات')
+                                        ->default($productsShort)
+                                        ->disabled()
+                                        ->dehydrated(false)
+                                        ->extraInputAttributes(['title' => $productsPlain])
+                                        ->columnSpan(['default' => 12, 'lg' => 1]),
+                                    Select::make('order_cities.'.$order->id)
+                                        ->label('اختر اسم مدينة صحيح')
+                                        ->placeholder('اختر المدينة')
+                                        ->options(function (Get $get): array {
+                                            $cid = $get('shipping_company_id');
+                                            if (! $cid) {
+                                                return [];
+                                            }
+
+                                            return ShippingCompanyCity::query()
+                                                ->where('shipping_company_id', (int) $cid)
+                                                ->where('is_active', true)
+                                                ->orderBy('sort_order')
+                                                ->orderBy('name')
+                                                ->pluck('name', 'id')
+                                                ->all();
+                                        })
+                                        ->searchable()
+                                        ->preload()
+                                        ->native(false)
+                                        ->required(function (Get $get) use ($order, $matcher): bool {
+                                            $cid = $get('shipping_company_id');
+                                            if (! $cid) {
+                                                return false;
+                                            }
+
+                                            $company = ShippingCompany::query()->find((int) $cid);
+                                            if ($company === null || ! $company->cities()->active()->exists()) {
+                                                return false;
+                                            }
+
+                                            return $matcher->findMatchingCity($company, (string) $order->city) === null;
+                                        })
+                                        ->helperText('Vitips / Express')
+                                        ->columnSpan(['default' => 12, 'lg' => 2]),
+                                ])
+                                ->columns(12)
+                                ->extraAttributes([
+                                    'class' => 'rounded-lg border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-900/40',
+                                ])
+                                ->visible(function (Get $get) use ($order, $matcher): bool {
+                                    $cid = $get('shipping_company_id');
+                                    if (! $cid) {
+                                        return false;
+                                    }
+
+                                    $company = ShippingCompany::query()->find((int) $cid);
+                                    if ($company === null || ! $company->cities()->active()->exists()) {
+                                        return false;
+                                    }
+
+                                    return $matcher->findMatchingCity($company, (string) $order->city) === null;
+                                })
+                                ->columnSpanFull();
+                        }
+
+                        return $fields;
+                    })
                     ->action(function (Collection $records, array $data): void {
                         $shippingCompanyId = (int) ($data['shipping_company_id'] ?? 0);
                         $shippingCompany = ShippingCompany::query()->find($shippingCompanyId);
@@ -442,15 +734,76 @@ class DeliveriesTable
 
                         $eligible = $records->filter(
                             fn (Order $order): bool => $order->status === 'confirmed'
+                                && $order->shipping_company_id === null
+                                && blank($order->shipping_company)
                         );
 
                         if ($eligible->isEmpty()) {
                             Notification::make()
-                                ->title('المرجو تحديد طلبيات حالتها "confirmed" فقط.')
+                                ->title('لا توجد طلبية قابلة للإسناد')
+                                ->body('يجب أن تكون الحالة «مؤكّد» وبدون شركة شحن مسبقاً (تبويب Pending فقط).')
                                 ->warning()
                                 ->send();
 
                             return;
+                        }
+
+                        $matcher = app(ShippingCompanyCityMatcher::class);
+                        $orderCitiesInput = $data['order_cities'] ?? [];
+
+                        $autoCityMatchCount = 0;
+                        if ($shippingCompany->cities()->active()->exists()) {
+                            foreach ($eligible as $order) {
+                                if ($matcher->findMatchingCity($shippingCompany, (string) $order->city) !== null) {
+                                    $autoCityMatchCount++;
+                                }
+                            }
+                        }
+
+                        foreach ($eligible as $order) {
+                            $picked = $orderCitiesInput[$order->id] ?? null;
+                            $picked = $picked !== null && $picked !== '' ? (int) $picked : null;
+
+                            if ($shippingCompany->cities()->active()->exists()) {
+                                $match = $matcher->findMatchingCity($shippingCompany, (string) $order->city);
+                                $finalId = $picked ?? $match?->id;
+
+                                if ($finalId === null) {
+                                    Notification::make()
+                                        ->title('الطلبية '.$order->number.': اختر المدينة الصحيحة.')
+                                        ->danger()
+                                        ->send();
+
+                                    return;
+                                }
+
+                                $cityRow = ShippingCompanyCity::query()
+                                    ->where('shipping_company_id', $shippingCompany->id)
+                                    ->whereKey($finalId)
+                                    ->first();
+
+                                if ($cityRow === null) {
+                                    Notification::make()
+                                        ->title('مدينة غير صالحة لهذه الشركة.')
+                                        ->danger()
+                                        ->send();
+
+                                    return;
+                                }
+
+                                OrderCarrierCitySelection::query()->updateOrCreate(
+                                    [
+                                        'order_id' => $order->id,
+                                        'shipping_company_id' => $shippingCompany->id,
+                                    ],
+                                    ['shipping_company_city_id' => $finalId]
+                                );
+                            } else {
+                                OrderCarrierCitySelection::query()
+                                    ->where('order_id', $order->id)
+                                    ->where('shipping_company_id', $shippingCompany->id)
+                                    ->delete();
+                            }
                         }
 
                         $shippingManager = app(ShippingManager::class);
@@ -500,6 +853,7 @@ class DeliveriesTable
                                         $line .= " | {$rawText}";
                                     }
                                     $errors[] = $line;
+
                                     continue;
                                 }
 
@@ -560,16 +914,255 @@ class DeliveriesTable
                             }
                         }
 
+                        $cityLine = $shippingCompany->cities()->active()->exists()
+                            ? "تطابق تلقائي للمدينة: {$autoCityMatchCount} | "
+                            : '';
+
                         Notification::make()
-                            ->title("تمت مزامنة الشحن — نجح: {$success} | فشل: {$failed}")
+                            ->title("{$cityLine}تم الإرسال بنجاح: {$success} | فشل: {$failed}")
                             ->body($failed > 0 ? collect($errors)->take(5)->implode("\n") : null)
                             ->{$failed > 0 ? 'warning' : 'success'}()
                             ->send();
                     })
                     ->deselectRecordsAfterCompletion()
                     ->visible(fn (): bool => auth()->user()?->role === 'admin'
-                        && (Livewire::current()?->activeTab ?? null) === 'pending')
-                    ->requiresConfirmation(),
-            ]);
+                        && (Livewire::current()?->activeTab ?? null) === 'pending'),
+            ])
+            ->headerActions([
+                Action::make('importShippingInvoices')
+                    ->label('استيراد فاتورة الشحن')
+                    ->icon('heroicon-o-arrow-up-tray')
+                    ->modalHeading('استيراد فاتورة Vitips أو Express Coursier')
+                    ->modalDescription('ارفع ملفاً من لوحة الشحن: PDF أو نص (.txt / .csv). يُنشأ استيراد يعرض كل سطر (عميل، مدينة، مبلغ، Frais). ثم من صفحة الاستيراد اضغط «تحصيل أموال» لـ Vitips أو Express بشكل منفصل.')
+                    ->modalSubmitActionLabel('معالجة')
+                    ->visible(fn (): bool => in_array(auth()->user()?->role, ['admin', 'confirmation'], true)
+                        && (Livewire::current()?->activeTab ?? null) === 'shipping_companies')
+                    ->form([
+                        Select::make('invoice_carrier_filter')
+                            ->label('نطاق المعالجة')
+                            ->options([
+                                'both' => 'Vitips Express + Express Coursier',
+                                'vitips' => 'Vitips Express فقط (تجاهل Express Coursier)',
+                                'express' => 'Express Coursier فقط (تجاهل Vitips)',
+                            ])
+                            ->default('both')
+                            ->native(false)
+                            ->required(),
+                        FileUpload::make('invoice_files')
+                            ->label('ملفات الفاتورة')
+                            ->helperText('Vitips: عمود Code d\'envoi = نفس رقم التتبع (CL-…). Express: إما المعرف الطويل 2603…-553C… أو سطر أرقام فقط ثم Livré: (مثل 2020002555 يطابق CL-2020002555 في القاعدة).')
+                            ->multiple()
+                            ->disk('local')
+                            ->directory('shipping-invoice-imports')
+                            ->visibility('private')
+                            ->acceptedFileTypes([
+                                'application/pdf',
+                                'text/plain',
+                                'text/csv',
+                                '.pdf',
+                                '.txt',
+                                '.csv',
+                            ])
+                            ->maxFiles(15)
+                            ->required(),
+                    ])
+                    ->action(function (array $data): void {
+                        $paths = $data['invoice_files'] ?? [];
+                        if (! is_array($paths)) {
+                            $paths = array_filter([$paths]);
+                        }
+
+                        $disk = Storage::disk('local');
+                        $reader = app(ShippingInvoiceFileReader::class);
+                        $combined = '';
+                        $readErrors = [];
+
+                        foreach ($paths as $path) {
+                            if (! is_string($path) || $path === '') {
+                                continue;
+                            }
+                            if (! $disk->exists($path)) {
+                                continue;
+                            }
+
+                            try {
+                                $combined .= "\n".$reader->textFromStoragePath($disk, $path);
+                            } catch (\Throwable $e) {
+                                $readErrors[] = basename($path).': '.$e->getMessage();
+                                Log::warning('Shipping invoice file read failed', [
+                                    'path' => $path,
+                                    'exception' => $e->getMessage(),
+                                ]);
+                            }
+                        }
+
+                        if ($readErrors !== []) {
+                            Notification::make()
+                                ->title('فشل قراءة بعض الملفات')
+                                ->body(implode("\n", array_slice($readErrors, 0, 5)))
+                                ->danger()
+                                ->send();
+                        }
+
+                        if (trim($combined) === '') {
+                            Notification::make()
+                                ->title('لا يوجد نص قابل للمعالجة')
+                                ->body('تأكد أن PDF يحتوي على نص وليس صوراً فقط. على Windows: ثبّت Poppler وأضف pdftotext إلى PATH (أو عيّن PDFTOTEXT_BINARY في .env). أو استورد CSV/TXT بدلاً من PDF.')
+                                ->warning()
+                                ->send();
+
+                            foreach ($paths as $path) {
+                                if (is_string($path) && $path !== '' && $disk->exists($path)) {
+                                    $disk->delete($path);
+                                }
+                            }
+
+                            return;
+                        }
+
+                        $carrierFilter = $data['invoice_carrier_filter'] ?? 'both';
+                        if (! is_string($carrierFilter) || ! in_array($carrierFilter, ['both', 'vitips', 'express'], true)) {
+                            $carrierFilter = 'both';
+                        }
+
+                        /** @var ShippingInvoiceImportRecordResult $importResult */
+                        $importResult = app(ShippingInvoiceImportRecorder::class)->recordFromText(
+                            $combined,
+                            $carrierFilter,
+                            auth()->id(),
+                        );
+
+                        foreach ($paths as $path) {
+                            if (is_string($path) && $path !== '' && $disk->exists($path)) {
+                                $disk->delete($path);
+                            }
+                        }
+
+                        if ($importResult->import === null) {
+                            if ($importResult->alreadyPaidRejectedCount > 0) {
+                                Notification::make()
+                                    ->title('لم يُسجَّل الاستيراد')
+                                    ->body('لا يوجد سطر يُحفَظ في الفاتورة (كل الأسطر المستخرجة: غير موجود و/أو مدفوع مسبقاً — مرفوض).')
+                                    ->warning()
+                                    ->send();
+                                self::sendShippingInvoiceAlreadyPaidNotification($importResult);
+                            } else {
+                                Notification::make()
+                                    ->title('لم يُسجَّل الاستيراد')
+                                    ->body('أسطر الفاتورة = 0 — لا يُطبَّق التحصيل. تحقق من النص أو النطاق (Vitips / Express).')
+                                    ->warning()
+                                    ->send();
+                            }
+
+                            return;
+                        }
+
+                        $import = $importResult->import;
+
+                        $invoiceSuccessStatus = 'تم فاتورة بنجاح';
+                        $orderIdsFromInvoice = $import->lines()
+                            ->whereNotNull('order_id')
+                            ->pluck('order_id')
+                            ->unique()
+                            ->filter()
+                            ->values()
+                            ->all();
+                        if ($orderIdsFromInvoice !== []) {
+                            Order::query()
+                                ->whereIn('id', $orderIdsFromInvoice)
+                                ->update(['shipping_provider_status' => $invoiceSuccessStatus]);
+                        }
+
+                        $vitipsParsed = $import->vitipsLines()->count();
+                        $expressParsed = $import->expressLines()->count();
+                        $eligibleVitips = $import->vitipsLines()->where('match_status', 'eligible')->count();
+                        $eligibleExpress = $import->expressLines()->where('match_status', 'eligible')->count();
+                        $notFound = $import->lines()->where('match_status', 'not_found')->count();
+                        $ineligible = $import->lines()->where('match_status', 'ineligible')->count();
+                        $skippedZero = $import->lines()->where('match_status', 'skipped_zero')->count();
+                        $alreadyPaidCount = $importResult->alreadyPaidRejectedCount;
+
+                        $title = 'تم تسجيل الفاتورة — راجع الأسطر ثم استخدم «تحصيل أموال».';
+                        $bodyParts = [];
+                        $bodyParts[] = "Vitips: {$vitipsParsed} سطر، Express: {$expressParsed} سطر.";
+                        $bodyParts[] = "قابلة للتحصيل — Vitips: {$eligibleVitips} | Express: {$eligibleExpress}.";
+                        if ($carrierFilter === 'vitips') {
+                            $bodyParts[] = 'تم تجاهل أسطر Express في الملف (نطاق Vitips فقط).';
+                        } elseif ($carrierFilter === 'express') {
+                            $bodyParts[] = 'تم تجاهل أسطر Vitips في الملف (نطاق Express فقط).';
+                        }
+
+                        if ($vitipsParsed === 0 && $expressParsed === 0 && trim($combined) !== '') {
+                            $bodyParts[] = 'لم يُستخرج أي سطر — غالباً PDF بدون نص أو جدول غير معروف.';
+                        }
+
+                        if ($notFound > 0) {
+                            $bodyParts[] = "غير مطابق / غير موجود: {$notFound}.";
+                        }
+                        if ($ineligible > 0) {
+                            $bodyParts[] = "Vitips غير مؤهل (ليست شحن+غير مدفوع): {$ineligible}.";
+                        }
+                        if ($alreadyPaidCount > 0) {
+                            $bodyParts[] = "مدفوع مسبقاً — مرفوض (لم يُحفَظ في الفاتورة): {$alreadyPaidCount} — تفاصيل في الإشعار التالي.";
+                        }
+
+                        Notification::make()
+                            ->title($title)
+                            ->body(implode("\n", $bodyParts))
+                            ->{$vitipsParsed + $expressParsed > 0 ? 'success' : 'warning'}()
+                            ->actions([
+                                Action::make('open_import')
+                                    ->label('عرض الفاتورة والتحصيل')
+                                    ->url(ShippingInvoiceImportResource::getUrl('view', ['record' => $import])),
+                            ])
+                            ->send();
+
+                        if ($skippedZero > 0) {
+                            Notification::make()
+                                ->title('لديك بعض طلبيات عائدة')
+                                ->body("{$skippedZero} سطر(ات) بـ Frais 0 (لن تُحصَّل تلقائياً).")
+                                ->warning()
+                                ->send();
+                        }
+
+                        self::sendShippingInvoiceAlreadyPaidNotification($importResult);
+                    }),
+            ])
+            ->headerActionsPosition(HeaderActionsPosition::Bottom);
+    }
+
+    /**
+     * طلبية مُسلّمة ومدفوعة — لا تعديل في جدول التوصيل.
+     */
+    public static function isDeliveredAndPaid(Order $record): bool
+    {
+        return $record->status === 'delivered' && $record->payment_status === 'paid';
+    }
+
+    private static function sendShippingInvoiceAlreadyPaidNotification(ShippingInvoiceImportRecordResult $result): void
+    {
+        if ($result->alreadyPaidRejectedCount === 0) {
+            return;
+        }
+
+        $lines = collect($result->alreadyPaidRejectedLines)->map(function (array $line): string {
+            $tag = ($line['carrier'] ?? '') === 'express' ? 'Express' : 'Vitips';
+
+            return (string) ($line['tracking_key'] ?? '').' ('.$tag.')';
+        });
+
+        $maxList = 40;
+        $shown = $lines->take($maxList)->implode("\n");
+        $suffix = $lines->count() > $maxList
+            ? "\n… و ".($lines->count() - $maxList).' آخر'
+            : '';
+
+        Notification::make()
+            ->title('مدفوع مسبقاً — مرفوض')
+            ->body(
+                "لم تُحفَظ في الفاتورة (الطلبية مدفوعة مسبقاً) :\n".$shown.$suffix
+            )
+            ->warning()
+            ->send();
     }
 }

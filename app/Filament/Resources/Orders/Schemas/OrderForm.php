@@ -94,9 +94,9 @@ class OrderForm
                             ->required(),
 
                         Forms\Components\TextInput::make('city')
-                            ->label('المدينة (تفصيل)')
-                            ->maxLength(255)
-                            ->placeholder('مثال: الرباط، طنجة، أكادير…'),
+                            ->label('المدينة')
+                            ->required()
+                            ->maxLength(255),
 
                         Forms\Components\Textarea::make('shipping_address')
                             ->label('عنوان التوصيل')
@@ -109,6 +109,53 @@ class OrderForm
                             ->columnSpanFull(),
                     ])
                     ->columns(2),
+
+                Section::make('الشحن والدفع')
+                    ->description('رقم التتبع قابل للتعديل يدوياً — لا يُرسل شيء تلقائياً إلى شركة الشحن من هنا.')
+                    ->schema([
+                        Forms\Components\Select::make('shipping_company_id')
+                            ->label('شركة الشحن')
+                            ->relationship('shippingCompany', 'name')
+                            ->searchable()
+                            ->preload()
+                            ->nullable(),
+                        Forms\Components\TextInput::make('shipping_company')
+                            ->label('اسم شركة الشحن (نص)')
+                            ->maxLength(255)
+                            ->nullable(),
+                        Forms\Components\TextInput::make('tracking_number')
+                            ->label('رقم التتبع')
+                            ->maxLength(255)
+                            ->nullable()
+                            ->columnSpanFull(),
+                        Forms\Components\TextInput::make('shipping_provider_status')
+                            ->label('حالة المزوّد')
+                            ->maxLength(255)
+                            ->nullable(),
+                        Forms\Components\Select::make('payment_status')
+                            ->label('حالة الدفع')
+                            ->options([
+                                'unpaid' => 'غير مدفوع',
+                                'paid' => 'مدفوع',
+                            ])
+                            ->default('unpaid')
+                            ->live(),
+                        Forms\Components\DateTimePicker::make('paid_at')
+                            ->label('تاريخ الدفع')
+                            ->nullable(),
+                        Forms\Components\Select::make('delivery_man_id')
+                            ->label('الموزع')
+                            ->relationship(
+                                'deliveryMan',
+                                'name',
+                                fn ($query) => $query->where('role', 'delivery_man')
+                            )
+                            ->searchable()
+                            ->preload()
+                            ->nullable(),
+                    ])
+                    ->columns(2)
+                    ->collapsible(),
 
                 Section::make('تفاصيل الطلبية')
                     ->schema([

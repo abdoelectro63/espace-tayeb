@@ -88,17 +88,18 @@
                             $showOtherCity = old('shipping_zone', $shippingZone) === 'other';
                         @endphp
                         <div id="checkout-other-city-wrap" class="mt-4 {{ $showOtherCity ? '' : 'hidden' }}">
-                            <label for="checkout-city-other" class="block text-sm font-medium text-zinc-700">اسم المدينة <span class="text-rose-600">*</span></label>
+                            <label for="checkout-city" class="block text-sm font-medium text-zinc-700">اسم المدينة <span class="text-rose-600">*</span></label>
                             <input
-                                id="checkout-city-other"
-                                name="city"
                                 type="text"
+                                id="checkout-city"
+                                name="city"
                                 value="{{ old('city') }}"
-                                placeholder="مثال: الرباط، طنجة، أكادير…"
-                                class="mt-1 w-full rounded-xl border border-zinc-200 px-3 py-2.5 text-sm"
+                                maxlength="255"
                                 autocomplete="address-level2"
+                                class="mt-1 w-full rounded-xl border border-zinc-200 bg-white px-3 py-2.5 text-sm font-medium text-zinc-900"
                                 @if($showOtherCity) required @endif
-                            >
+                                placeholder="مثال: فاس، مراكش، طنجة…"
+                            />
                             @error('city')
                                 <p class="mt-1 text-xs font-medium text-rose-600">{{ $message }}</p>
                             @enderror
@@ -167,7 +168,7 @@
                 (function () {
                     const select = document.getElementById('checkout-shipping-zone');
                     const wrap = document.getElementById('checkout-other-city-wrap');
-                    const cityInput = document.getElementById('checkout-city-other');
+                    const cityInput = document.getElementById('checkout-city');
                     const syncUrl = select?.dataset?.shippingSyncUrl;
                     const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
                     const elSub = document.getElementById('checkout-summary-subtotal');

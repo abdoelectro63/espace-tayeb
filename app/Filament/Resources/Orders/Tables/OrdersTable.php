@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Orders\Tables;
 
+use App\Filament\Resources\Orders\OrderResource;
 use App\Models\Order;
 use App\Models\Product;
 use App\Models\ShippingCompany;
@@ -20,8 +21,8 @@ use Filament\Actions\RestoreBulkAction;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
-use Filament\Tables;
 use Filament\Notifications\Notification;
+use Filament\Tables;
 use Filament\Tables\Columns\SelectColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Columns\TextInputColumn;
@@ -39,6 +40,14 @@ class OrdersTable
         return $table
             ->modifyQueryUsing(fn (Builder $query) => $query->withTrashed()->with('orderItems.product'))
             ->defaultSort('created_at', 'desc')
+            ->checkIfRecordIsSelectableUsing(
+                fn (Order $record): bool => (Livewire::current()?->activeTab ?? null) !== 'delivered'
+            )
+            ->recordUrl(
+                fn (Order $record): ?string => (Livewire::current()?->activeTab ?? null) === 'delivered'
+                    ? null
+                    : OrderResource::getUrl('edit', ['record' => $record])
+            )
             // بمجرد تعريف الـ Bulk Actions، ستظهر الـ Checkboxes تلقائياً في الجدول
             ->columns([
                 TextColumn::make('created_at')
@@ -46,9 +55,15 @@ class OrdersTable
                     ->dateTime('d/m/Y H:i')
                     ->sortable(),
                 TextColumn::make('customer_name')->label('الزبون')->searchable(),
-                TextInputColumn::make('customer_phone')->label('الهاتف'),
-                TextInputColumn::make('city')->label('المدينة'),
-                TextInputColumn::make('shipping_address')->label('العنوان'),
+                TextInputColumn::make('customer_phone')
+                    ->label('الهاتف')
+                    ->disabled(fn (): bool => (Livewire::current()?->activeTab ?? null) === 'delivered'),
+                TextInputColumn::make('city')
+                    ->label('المدينة')
+                    ->disabled(fn (): bool => (Livewire::current()?->activeTab ?? null) === 'delivered'),
+                TextInputColumn::make('shipping_address')
+                    ->label('العنوان')
+                    ->disabled(fn (): bool => (Livewire::current()?->activeTab ?? null) === 'delivered'),
                 TextColumn::make('products')
                     ->label('المنتجات')
                     ->state(function ($record): string {
@@ -97,6 +112,7 @@ class OrdersTable
 
                 SelectColumn::make('status')
                     ->label('تغيير الحالة')
+                    ->disabled(fn (): bool => (Livewire::current()?->activeTab ?? null) === 'delivered')
                     ->selectablePlaceholder(false)
                     ->rules(['required'])
                     ->validationMessages([
@@ -274,7 +290,8 @@ class OrdersTable
                     ->modalContent(fn ($record) => view('filament.orders.products-modal', [
                         'items' => $record->orderItems,
                     ])),
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   DeleteAction::make(),
+                DeleteAction::make()
+                    ->visible(fn (): bool => (Livewire::current()?->activeTab ?? null) !== 'delivered'),
                 RestoreAction::make()
                     ->visible(fn ($record): bool => method_exists($record, 'trashed') && $record->trashed()),
                 ForceDeleteAction::make()
@@ -349,7 +366,7 @@ class OrdersTable
                             $errors = [];
                             $shippingManager = app(ShippingManager::class);
 
-                            /** @var \App\Models\Order $order */
+                            /** @var Order $order */
                             foreach ($records as $order) {
                                 try {
                                     $result = $shippingManager->process($order, $shippingCompanyId);
@@ -357,6 +374,7 @@ class OrdersTable
                                     if (($result['code'] ?? '') !== 'ok') {
                                         $failed++;
                                         $errors[] = "Order #{$order->id}: ".($result['message'] ?: 'Unknown API response.');
+
                                         continue;
                                     }
 
@@ -430,7 +448,7 @@ class OrdersTable
                             $success = 0;
                             $failed = 0;
 
-                            /** @var \App\Models\Order $order */
+                            /** @var Order $order */
                             $targets = $records->filter(fn (Order $order) => blank($order->tracking_number) && $order->status === 'confirmed');
 
                             if ($targets->isEmpty()) {

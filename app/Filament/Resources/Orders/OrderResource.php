@@ -8,10 +8,12 @@ use App\Filament\Resources\Orders\Tables\OrdersTable;
 use App\Models\Order;
 use BackedEnum;
 use Filament\Resources\Resource;
-use Filament\Schemas\Schema; // نلتزم بـ Schema كما في الخطأ
-use Filament\Support\Icons\Heroicon;
+use Filament\Schemas\Schema;
+use Filament\Support\Icons\Heroicon; // نلتزم بـ Schema كما في الخطأ
 use Filament\Tables\Table;
+use Illuminate\Auth\Access\Response;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
 
 class OrderResource extends Resource
@@ -65,5 +67,14 @@ class OrderResource extends Resource
     public static function canViewAny(): bool
     {
         return in_array(auth()->user()?->role, ['admin', 'confirmation'], true);
+    }
+
+    public static function getEditAuthorizationResponse(Model $record): Response
+    {
+        if ($record instanceof Order && $record->status === 'delivered') {
+            return Response::deny('لا يمكن تعديل طلبية تم تسليمها.');
+        }
+
+        return parent::getEditAuthorizationResponse($record);
     }
 }

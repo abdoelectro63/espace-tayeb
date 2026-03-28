@@ -3,7 +3,9 @@
 namespace App\Services\Shipping;
 
 use App\Models\Order;
+use App\Models\OrderCarrierCitySelection;
 use App\Models\ShippingCompany;
+use App\Models\ShippingCompanyCity;
 use Illuminate\Http\Client\Factory as HttpFactory;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
@@ -12,10 +14,12 @@ use RuntimeException;
 class ShippingManager
 {
     private const VITIPS_ENDPOINT = 'https://app.vitipsexpress.com/api/client/post/colis/add-colis';
+
     private const EXPRESS_BATCH_ENDPOINT = 'https://expresscoursier.net/v1.0/batch/';
 
     public function __construct(
         private readonly HttpFactory $http,
+        private readonly ShippingCompanyCityMatcher $cityMatcher,
     ) {}
 
     /**
@@ -234,12 +238,16 @@ class ShippingManager
         $order->loadMissing('orderItems.product');
 
         $phoneRaw = (string) ($order->customer_phone ?? '');
-        $cityRaw = (string) ($order->customer_city ?? $order->city ?? '');
+
+        $cityPayload = $this->buildVitipsCityPayload($order, $company);
+        $cityStr = $cityPayload['city'];
 
         $payload = [
             'fullname' => (string) ($order->customer_name ?? ''),
             'phone' => $this->normalizeMoroccanPhoneForVitips($phoneRaw),
-            'city' => $this->normalizeCityLabelForVitips($cityRaw),
+            // Vitips often validates "ville" (French); send both keys with the same value.
+            'city' => $cityStr,
+            'ville' => $cityStr,
             'address' => (string) ($order->customer_address ?? $order->shipping_address ?? ''),
             'price' => (float) ($order->total_price ?? 0),
             'product' => $order->orderItems
@@ -258,7 +266,7 @@ class ShippingManager
             'internal_id' => $this->buildInternalReference($order),
         ];
 
-        foreach (['fullname', 'phone', 'city', 'price', 'product', 'qty'] as $requiredKey) {
+        foreach (['fullname', 'phone', 'city', 'ville', 'price', 'product', 'qty'] as $requiredKey) {
             if (blank($payload[$requiredKey])) {
                 throw new RuntimeException("Order #{$order->id}: missing required field [{$requiredKey}] for Vitips payload.");
             }
@@ -400,6 +408,68 @@ class ShippingManager
         return $city;
     }
 
+    private function resolveCompanyCityRow(Order $order, ShippingCompany $company): ?ShippingCompanyCity
+    {
+        $sel = OrderCarrierCitySelection::query()
+            ->where('order_id', $order->id)
+            ->where('shipping_company_id', $company->id)
+            ->first();
+
+        if ($sel === null || $sel->shipping_company_city_id === null) {
+            return null;
+        }
+
+        return ShippingCompanyCity::query()
+            ->where('shipping_company_id', $company->id)
+            ->whereKey($sel->shipping_company_city_id)
+            ->first();
+    }
+
+    /**
+     * Vitips HTML uses &lt;option value="80"&gt;CASABLANCA&lt;/option&gt; — the form POST sends that id in `city`, not the label.
+     *
+     * @return array{city: string}
+     */
+    private function buildVitipsCityPayload(Order $order, ShippingCompany $company): array
+    {
+        $row = $this->resolveCompanyCityRow($order, $company);
+        if ($row === null) {
+            $row = $this->cityMatcher->findMatchingCity($company, (string) ($order->city ?? ''));
+        }
+
+        if ($row !== null) {
+            return ['city' => trim((string) $row->cityValueForVitipsApi())];
+        }
+
+        $cityRaw = trim(preg_replace('/\s+/u', ' ', (string) ($order->customer_city ?? $order->city ?? '')));
+
+        if ($company->cities()->active()->exists()) {
+            throw new RuntimeException(
+                "Order #{$order->id}: la ville du destinataire ne figure pas dans les villes Vitips. Ouvrez la modale d'assignation, choisissez la ville pour chaque commande, ou importez la liste Vitips (vitips:import-cities)."
+            );
+        }
+
+        $normalized = $this->normalizeCityLabelForVitips($cityRaw);
+        if ($normalized === '') {
+            throw new RuntimeException("Order #{$order->id}: ville manquante pour Vitips.");
+        }
+
+        return ['city' => $normalized];
+    }
+
+    /**
+     * City code for Express Coursier: selection row, else digits from order city.
+     */
+    private function resolveExpressCityCodeForOrder(Order $order, ShippingCompany $company): string
+    {
+        $row = $this->resolveCompanyCityRow($order, $company);
+        if ($row !== null && filled($row->express_city_code)) {
+            return trim((string) $row->express_city_code);
+        }
+
+        return $this->resolveExpressCityCode((string) ($order->city ?? ''));
+    }
+
     /**
      * @param  Collection<int,Order>  $orders
      * @return array{
@@ -441,7 +511,7 @@ class ShippingManager
             $package = [
                 'receiver_name' => (string) ($order->customer_name ?? ''),
                 'address' => (string) ($order->shipping_address ?? ''),
-                'city' => $this->resolveExpressCityCode((string) ($order->city ?? '')),
+                'city' => $this->resolveExpressCityCodeForOrder($order, $company),
                 'phone' => (string) ($order->customer_phone ?? ''),
                 'price' => (string) ((float) ($order->total_price ?? 0)),
                 'note' => (string) ($order->notes ?? ''),

@@ -3,6 +3,8 @@
 namespace App\Filament\Resources\Orders\Pages;
 
 use App\Filament\Resources\Orders\DeliveryResource;
+use App\Filament\Resources\ShippingInvoiceImports\ShippingInvoiceImportResource;
+use Filament\Actions\Action;
 use Filament\Resources\Pages\ListRecords;
 use Filament\Schemas\Components\Tabs\Tab;
 use Illuminate\Database\Eloquent\Builder;
@@ -13,7 +15,25 @@ class ListDeliveries extends ListRecords
 
     protected function getHeaderActions(): array
     {
-        return []; // الموزع لا يحتاج لزر "إنشاء طلب جديد" هنا
+        if (auth()->user()?->role === 'delivery_man') {
+            return [];
+        }
+
+        if (($this->activeTab ?? null) !== 'shipping_companies') {
+            return [];
+        }
+
+        if (! in_array(auth()->user()?->role, ['admin', 'confirmation'], true)) {
+            return [];
+        }
+
+        return [
+            Action::make('shipping_invoice_imports')
+                ->label('فواتير الشحن')
+                ->icon('heroicon-o-document-text')
+                ->url(ShippingInvoiceImportResource::getUrl('index'))
+                ->color('gray'),
+        ];
     }
 
     public function getTabs(): array

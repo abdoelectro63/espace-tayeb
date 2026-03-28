@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class ShippingCompany extends Model
 {
@@ -22,5 +23,10 @@ class ShippingCompany extends Model
             ?? $this->vitips_token;
 
         return filled($token) ? (string) $token : null;
+    }
+
+    public function cities(): HasMany
+    {
+        return $this->hasMany(ShippingCompanyCity::class);
     }
 }

@@ -5,6 +5,7 @@ namespace App\Filament\Resources\ShippingCompanies;
 use App\Filament\Resources\ShippingCompanies\Pages\CreateShippingCompany;
 use App\Filament\Resources\ShippingCompanies\Pages\EditShippingCompany;
 use App\Filament\Resources\ShippingCompanies\Pages\ListShippingCompanies;
+use App\Filament\Resources\ShippingCompanies\RelationManagers\ShippingCompanyCitiesRelationManager;
 use App\Filament\Resources\ShippingCompanies\Schemas\ShippingCompanyForm;
 use App\Filament\Resources\ShippingCompanies\Tables\ShippingCompaniesTable;
 use App\Models\ShippingCompany;
@@ -45,6 +46,13 @@ class ShippingCompanyResource extends Resource
             'index' => ListShippingCompanies::route('/'),
             'create' => CreateShippingCompany::route('/create'),
             'edit' => EditShippingCompany::route('/{record}/edit'),
+        ];
+    }
+
+    public static function getRelations(): array
+    {
+        return [
+            ShippingCompanyCitiesRelationManager::class,
         ];
     }
 

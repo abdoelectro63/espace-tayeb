@@ -53,4 +53,9 @@ class Order extends Model
     {
         return $this->belongsTo(ShippingCompany::class, 'shipping_company_id');
     }
+
+    public function carrierCitySelections(): HasMany
+    {
+        return $this->hasMany(OrderCarrierCitySelection::class);
+    }
 }

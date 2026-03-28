@@ -15,7 +15,8 @@ class ListOrders extends ListRecords
     protected function getHeaderActions(): array
     {
         return [
-            Actions\CreateAction::make(),
+            Actions\CreateAction::make()
+                ->visible(fn (): bool => ($this->activeTab ?? null) !== 'delivered'),
         ];
     }
 
