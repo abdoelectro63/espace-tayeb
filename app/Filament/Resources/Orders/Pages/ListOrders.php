@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Orders\Pages;
 
+use App\Filament\Pages\ImportOrdersCsv;
 use App\Filament\Resources\Orders\OrderResource;
 use Filament\Actions;
 use Filament\Resources\Pages\ListRecords;
@@ -15,6 +16,12 @@ class ListOrders extends ListRecords
     protected function getHeaderActions(): array
     {
         return [
+            Actions\Action::make('importCsv')
+                ->label('استيراد CSV')
+                ->icon('heroicon-o-arrow-up-tray')
+                ->color('gray')
+                ->url(ImportOrdersCsv::getUrl())
+                ->visible(fn (): bool => OrderResource::canViewAny()),
             Actions\CreateAction::make()
                 ->visible(fn (): bool => ($this->activeTab ?? null) !== 'delivered'),
         ];

@@ -53,6 +53,6 @@ class ShippingSettingResource extends Resource
 
     public static function canViewAny(): bool
     {
-        return ! in_array(auth()->user()?->role, ['confirmation', 'delivery_man'], true);
+        return ! in_array(auth()->user()?->role, ['confirmation', 'delivery_man', 'manager'], true);
     }
 }

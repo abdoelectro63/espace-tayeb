@@ -168,13 +168,19 @@ function extractErrorMessage(err) {
 /**
  * @param {number} productId
  * @param {number} next
+ * @param {number|null|undefined} productVariationId
  */
-function patchCartLineQuantity(productId, next) {
+function patchCartLineQuantity(productId, next, productVariationId) {
     const token = getCsrfToken();
+
+    const body = { quantity: next };
+    if (productVariationId !== undefined && productVariationId !== null && productVariationId !== '') {
+        body.product_variation_id = productVariationId;
+    }
 
     return window.axios.patch(
         `/cart/${productId}`,
-        { quantity: next },
+        body,
         {
             headers: {
                 Accept: 'application/json',
@@ -226,16 +232,19 @@ function syncCartPageFromApi(data) {
         return;
     }
 
-    const incomingIds = new Set(data.items.map((i) => i.id));
+    const incomingKeys = new Set(
+        data.items.map((i) => `${i.id}|${i.product_variation_id ?? 0}`),
+    );
     container.querySelectorAll('[data-cart-page-line]').forEach((li) => {
-        const id = Number.parseInt(li.getAttribute('data-product-id') || '0', 10);
-        if (!incomingIds.has(id)) {
+        const key = li.getAttribute('data-cart-line-key');
+        if (key && !incomingKeys.has(key)) {
             li.remove();
         }
     });
 
     data.items.forEach((item) => {
-        const li = container.querySelector(`[data-cart-page-line][data-product-id="${item.id}"]`);
+        const key = `${item.id}|${item.product_variation_id ?? 0}`;
+        const li = container.querySelector(`[data-cart-page-line][data-cart-line-key="${key}"]`);
         if (!li) {
             window.location.reload();
 
@@ -430,6 +439,8 @@ function renderCartDrawerItems(data) {
         li.className = 'flex gap-3 rounded-xl border border-zinc-100 bg-white p-3 shadow-sm';
         li.setAttribute('data-cart-line', '1');
         li.setAttribute('data-product-id', String(item.id));
+        li.setAttribute('data-product-variation-id', item.product_variation_id != null ? String(item.product_variation_id) : '');
+        li.setAttribute('data-cart-line-key', `${item.id}|${item.product_variation_id ?? 0}`);
         li.setAttribute('data-qty', String(qty));
         li.setAttribute('data-stock', String(stock));
 
@@ -678,6 +689,8 @@ function initCartDrawer() {
         }
 
         const productId = Number.parseInt(line.getAttribute('data-product-id') || '0', 10);
+        const vidRaw = line.getAttribute('data-product-variation-id');
+        const vid = vidRaw === '' || vidRaw === null ? null : Number.parseInt(vidRaw, 10);
         const current = Number.parseInt(line.getAttribute('data-qty') || '0', 10);
         const stock = Number.parseInt(line.getAttribute('data-stock') || '0', 10);
         const delta = Number.parseInt(btn.getAttribute('data-qty-delta') || '0', 10);
@@ -703,7 +716,7 @@ function initCartDrawer() {
         });
 
         try {
-            const { data } = await patchCartLineQuantity(productId, next);
+            const { data } = await patchCartLineQuantity(productId, next, vid);
 
             if (data.cart_count !== undefined) {
                 updateCartBadge(data.cart_count);
@@ -743,6 +756,8 @@ function initCartPageQuantity() {
         }
 
         const productId = Number.parseInt(line.getAttribute('data-product-id') || '0', 10);
+        const vidRaw = line.getAttribute('data-product-variation-id');
+        const vid = vidRaw === '' || vidRaw === null ? null : Number.parseInt(vidRaw, 10);
         const current = Number.parseInt(line.getAttribute('data-qty') || '0', 10);
         const stock = Number.parseInt(line.getAttribute('data-stock') || '0', 10);
         const delta = Number.parseInt(btn.getAttribute('data-qty-delta') || '0', 10);
@@ -768,7 +783,7 @@ function initCartPageQuantity() {
         });
 
         try {
-            const { data } = await patchCartLineQuantity(productId, next);
+            const { data } = await patchCartLineQuantity(productId, next, vid);
 
             if (data.cart_count !== undefined) {
                 updateCartBadge(data.cart_count);

@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Orders\Schemas;
 
 use App\Models\Product;
+use App\Models\ProductVariation;
 use App\Services\ShippingCalculator;
 use Filament\Forms;
 use Filament\Schemas\Components\Section;
@@ -169,23 +170,36 @@ class OrderForm
                             ->schema([
                                 Forms\Components\Select::make('product_id')
                                     ->label('المنتج')
-                                    ->relationship('product', 'name')
+                                    ->relationship('product', 'name', fn ($query) => $query->with('variations'))
                                     ->searchable()
                                     ->preload()
                                     ->required()
                                     ->live()
                                     ->afterStateUpdated(function (Set $set, Get $get, $state): void {
+                                        $set('product_variation_id', null);
                                         if (blank($state)) {
                                             self::recalculateShippingAndTotal($get, $set);
 
                                             return;
                                         }
 
-                                        $product = Product::query()->find($state);
+                                        $product = Product::query()->with('variations')->find($state);
                                         if ($product === null) {
                                             self::recalculateShippingAndTotal($get, $set);
 
                                             return;
+                                        }
+
+                                        if ($product->variations->isNotEmpty()) {
+                                            $def = $product->getDefaultVariation();
+                                            if ($def !== null) {
+                                                $set('product_variation_id', $def->id);
+                                                $set('unit_price', $def->price);
+
+                                                self::recalculateShippingAndTotal($get, $set);
+
+                                                return;
+                                            }
                                         }
 
                                         $price = filled($product->discount_price)
@@ -193,6 +207,52 @@ class OrderForm
                                             : $product->price;
 
                                         $set('unit_price', $price);
+                                        self::recalculateShippingAndTotal($get, $set);
+                                    }),
+
+                                Forms\Components\Select::make('product_variation_id')
+                                    ->label('النوع')
+                                    ->options(function (Get $get): array {
+                                        $pid = $get('product_id');
+                                        if (blank($pid)) {
+                                            return [];
+                                        }
+                                        $product = Product::query()->with('variations')->find($pid);
+                                        if ($product === null || $product->variations->isEmpty()) {
+                                            return [];
+                                        }
+
+                                        return $product->variations
+                                            ->mapWithKeys(fn (ProductVariation $v): array => [
+                                                $v->id => $v->label().' — '.number_format((float) $v->price, 2).' MAD',
+                                            ])
+                                            ->all();
+                                    })
+                                    ->searchable()
+                                    ->nullable()
+                                    ->visible(function (Get $get): bool {
+                                        $pid = $get('product_id');
+                                        if (blank($pid)) {
+                                            return false;
+                                        }
+
+                                        return Product::query()->whereKey($pid)->whereHas('variations')->exists();
+                                    })
+                                    ->live()
+                                    ->afterStateUpdated(function (Set $set, Get $get, $state): void {
+                                        $pid = $get('product_id');
+                                        if (blank($pid) || blank($state)) {
+                                            self::recalculateShippingAndTotal($get, $set);
+
+                                            return;
+                                        }
+                                        $v = ProductVariation::query()
+                                            ->whereKey($state)
+                                            ->where('product_id', $pid)
+                                            ->first();
+                                        if ($v !== null) {
+                                            $set('unit_price', $v->price);
+                                        }
                                         self::recalculateShippingAndTotal($get, $set);
                                     }),
 

@@ -44,7 +44,7 @@
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
 <body class="min-h-screen bg-zinc-50 font-sans text-zinc-900 antialiased">
-    <x-layout.header :cart-count="$cartCount ?? 0" />
+    <x-layout.header :cart-count="$cartCount ?? 0" :top-menu="$topMenu ?? null" />
 
     @if(session('cart_success'))
         <div class="border-b border-orange-100 bg-orange-50 px-4 py-2 text-center text-sm font-medium text-orange-800">
@@ -63,27 +63,82 @@
         {{ $slot }}
     </main>
 
-    <footer class="mt-20 border-t border-zinc-200 bg-white">
+    <footer class="store-footer mt-20">
         <div class="mx-auto max-w-6xl px-4 py-12 sm:px-6">
-            <div class="flex flex-col gap-8 md:flex-row md:items-start md:justify-between">
-                <div>
-                    <p class="text-lg font-bold text-zinc-900">{{ config('app.name') }}</p>
-                    <p class="mt-2 max-w-sm text-sm leading-relaxed text-zinc-600">
-                        متجركم للأجهزة المنزلية والمنتجات المختارة — جودة، شفافية في الأسعار، وخدمة قريبة منكم.
+            <div class="grid gap-10 md:grid-cols-2 lg:grid-cols-4">
+                <div class="lg:col-span-1">
+                    @if (! empty($footerLogoUrl))
+                        <img src="{{ $footerLogoUrl }}" alt="" class="mb-4 h-10 w-auto object-contain" loading="lazy" />
+                    @endif
+                    <p class="store-footer-title text-lg font-bold">{{ config('app.name') }}</p>
+                    <p class="mt-2 max-w-sm text-sm leading-relaxed">
+                        {{ filled(trim($footerSettings->tagline ?? '')) ? $footerSettings->tagline : 'متجركم للأجهزة المنزلية والمنتجات المختارة — جودة، شفافية في الأسعار، وخدمة قريبة منكم.' }}
                     </p>
                 </div>
-                <div class="text-sm text-zinc-600">
-                    <p class="font-semibold text-zinc-900">روابط</p>
-                    <ul class="mt-3 space-y-2">
-                        <li><a href="{{ route('store.home') }}" class="hover:text-orange-600">الرئيسية</a></li>
-                        <li><a href="{{ route('store.home') }}#products" class="hover:text-orange-600">المنتجات</a></li>
-                        <li><a href="{{ route('store.cart') }}" class="hover:text-orange-600">سلة التسوق</a></li>
-                        <li><a href="{{ route('store.checkout') }}" class="hover:text-orange-600">إتمام الشراء</a></li>
-                    </ul>
-                </div>
+                @php
+                    $footerCols = [
+                        ['menu' => $footerMenu1 ?? null, 'fallbackTitle' => 'روابط'],
+                        ['menu' => $footerMenu2 ?? null, 'fallbackTitle' => 'عمود 2'],
+                        ['menu' => $footerMenu3 ?? null, 'fallbackTitle' => 'عمود 3'],
+                    ];
+                @endphp
+                @foreach ($footerCols as $col)
+                    @php
+                        $menu = $col['menu'];
+                    @endphp
+                    @if (! empty($menu?->items) && $menu->items->isNotEmpty())
+                        <div class="text-sm">
+                            <p class="store-footer-title font-semibold">{{ $menu->name ?: $col['fallbackTitle'] }}</p>
+                            <ul class="mt-3 space-y-2">
+                                @foreach ($menu->items as $item)
+                                    @php
+                                        $href = $item->resolveUrl();
+                                    @endphp
+                                    @if (filled($href))
+                                        <li><a href="{{ $href }}" class="underline-offset-4 hover:underline">{{ $item->label }}</a></li>
+                                    @endif
+                                @endforeach
+                            </ul>
+                        </div>
+                    @endif
+                @endforeach
+                @php
+                    $hasFooterCms = collect($footerCols)->contains(fn ($c) => ! empty($c['menu']?->items) && $c['menu']->items->isNotEmpty());
+                @endphp
+                @unless ($hasFooterCms)
+                    <div class="text-sm">
+                        <p class="store-footer-title font-semibold">روابط</p>
+                        <ul class="mt-3 space-y-2">
+                            <li><a href="{{ route('store.home') }}" class="underline-offset-4 hover:underline">الرئيسية</a></li>
+                            <li><a href="{{ route('store.home') }}#products" class="underline-offset-4 hover:underline">المنتجات</a></li>
+                            <li><a href="{{ route('store.cart') }}" class="underline-offset-4 hover:underline">سلة التسوق</a></li>
+                            <li><a href="{{ route('store.checkout') }}" class="underline-offset-4 hover:underline">إتمام الشراء</a></li>
+                            <li><a href="{{ route('page.show', ['slug' => 'privacy-policy']) }}" class="underline-offset-4 hover:underline">سياسة الخصوصية</a></li>
+                        </ul>
+                    </div>
+                @endunless
             </div>
-            <p class="mt-10 border-t border-zinc-100 pt-8 text-center text-xs text-zinc-500">
-                &copy; {{ date('Y') }} {{ config('app.name') }}. جميع الحقوق محفوظة.
+            @if (! empty($footerSettings?->social_links))
+                <div class="mt-8 flex flex-wrap justify-center gap-4 text-sm">
+                    @foreach ($footerSettings->social_links as $link)
+                        @if (filled($link['url'] ?? null))
+                            @php
+                                $socialIconKey = \App\Support\FooterSocialIcons::normalizeKey($link['icon'] ?? null);
+                            @endphp
+                            <a href="{{ $link['url'] }}" class="inline-flex items-center gap-2 underline-offset-4 hover:underline" rel="noopener noreferrer" target="_blank">
+                                <x-store.social-icon :name="$socialIconKey" class="h-5 w-5 shrink-0 opacity-90" />
+                                <span>{{ $link['platform'] ?? __('Link') }}</span>
+                            </a>
+                        @endif
+                    @endforeach
+                </div>
+            @endif
+            <p class="store-footer-divider mt-10 border-t pt-8 text-center text-xs">
+                @if (filled($footerSettings?->copyright_text))
+                    {{ str_replace('{year}', (string) date('Y'), $footerSettings->copyright_text) }}
+                @else
+                    &copy; {{ date('Y') }} . جميع الحقوق محفوظة.
+                @endif
             </p>
         </div>
     </footer>

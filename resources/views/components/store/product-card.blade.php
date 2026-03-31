@@ -1,7 +1,7 @@
 @props(['product'])
 
 <div class="group flex flex-col overflow-hidden rounded-2xl border border-zinc-100 bg-white shadow-sm transition hover:border-orange-200/80 hover:shadow-md">
-    <a href="{{ route('product.show', $product->seoRouteParams()) }}" class="flex flex-1 flex-col">
+    <a href="{{ route('store.category', $product->seoRouteParams()) }}" class="flex flex-1 flex-col">
         <div class="relative aspect-square overflow-hidden bg-zinc-100">
             <img
                 src="{{ $product->mainImageUrl() }}"

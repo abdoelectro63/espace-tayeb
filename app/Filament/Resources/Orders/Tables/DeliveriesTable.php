@@ -17,6 +17,7 @@ use Filament\Actions\Action;
 use Filament\Actions\BulkAction;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\FileUpload;
+use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
@@ -161,6 +162,13 @@ class DeliveriesTable
                 TextColumn::make('total_price')
                     ->label('المجموع')
                     ->money('MAD'),
+                TextInputColumn::make('delivery_fee')
+                    ->label('تكاليف التوصيل')
+                    ->type('number')
+                    ->step('0.01')
+                    ->rules(['nullable', 'numeric', 'min:0'])
+                    ->disabled(fn (Order $record): bool => self::isDeliveredAndPaid($record))
+                    ->visible(fn ($livewire): bool => in_array(($livewire->activeTab ?? null), ['collection', 'completed'], true)),
             ])
             ->defaultSort('created_at', 'desc')
             ->filters([
@@ -240,6 +248,36 @@ class DeliveriesTable
                         }
 
                         return [];
+                    }),
+                Tables\Filters\Filter::make('delivered_date')
+                    ->label('تاريخ التسليم')
+                    ->form([
+                        DatePicker::make('from')->label('من'),
+                        DatePicker::make('until')->label('إلى'),
+                    ])
+                    ->query(function (Builder $query, array $data): Builder {
+                        return $query
+                            ->when(
+                                filled($data['from'] ?? null),
+                                fn (Builder $q): Builder => $q->whereDate('updated_at', '>=', $data['from'])
+                            )
+                            ->when(
+                                filled($data['until'] ?? null),
+                                fn (Builder $q): Builder => $q->whereDate('updated_at', '<=', $data['until'])
+                            );
+                    })
+                    ->indicateUsing(function (array $data): array {
+                        $indicators = [];
+
+                        if (filled($data['from'] ?? null)) {
+                            $indicators[] = Indicator::make('من: '.$data['from']);
+                        }
+
+                        if (filled($data['until'] ?? null)) {
+                            $indicators[] = Indicator::make('إلى: '.$data['until']);
+                        }
+
+                        return $indicators;
                     }),
             ])
             ->recordActions([
@@ -335,6 +373,19 @@ class DeliveriesTable
                     ->icon('heroicon-o-currency-dollar')
                     ->color('success')
                     ->requiresConfirmation()
+                    ->form([
+                        Placeholder::make('collection_summary')
+                            ->label('ملخص التحصيل')
+                            ->content(function (Order $record): string {
+                                $gross = (float) ($record->total_price ?? 0);
+                                $fees = (float) ($record->delivery_fee ?? 0);
+                                $net = $gross - $fees;
+
+                                return 'المجموع الكلي: '.number_format($gross, 2).' MAD'
+                                    ."\n".'تكاليف التوصيل: '.number_format($fees, 2).' MAD'
+                                    ."\n".'المبلغ الواجب تسليمه: '.number_format($net, 2).' MAD';
+                            }),
+                    ])
                     ->visible(fn ($record): bool => (Livewire::current()?->activeTab ?? null) === 'collection'
                         && in_array(auth()->user()?->role, ['admin', 'confirmation'], true)
                         && $record->status === 'delivered'
@@ -423,6 +474,29 @@ class DeliveriesTable
                     ->visible(fn (): bool => (Livewire::current()?->activeTab ?? null) === 'collection'
                         && in_array(auth()->user()?->role, ['admin', 'confirmation'], true))
                     ->requiresConfirmation()
+                    ->form(function (): array {
+                        $livewire = Livewire::current();
+                        $records = $livewire && method_exists($livewire, 'getSelectedTableRecords')
+                            ? $livewire->getSelectedTableRecords()
+                            : collect();
+
+                        $eligible = $records->filter(fn (Order $order): bool => $order->status === 'delivered' && $order->payment_status !== 'paid');
+
+                        $gross = (float) $eligible->sum(fn (Order $order): float => (float) ($order->total_price ?? 0));
+                        $fees = (float) $eligible->sum(fn (Order $order): float => (float) ($order->delivery_fee ?? 0));
+                        $net = $gross - $fees;
+
+                        return [
+                            Placeholder::make('bulk_collection_summary')
+                                ->label('ملخص التحصيل')
+                                ->content(
+                                    'عدد الطلبيات: '.$eligible->count()
+                                    ."\n".'المجموع الكلي: '.number_format($gross, 2).' MAD'
+                                    ."\n".'تكاليف التوصيل: '.number_format($fees, 2).' MAD'
+                                    ."\n".'المبلغ الواجب تسليمه: '.number_format($net, 2).' MAD'
+                                ),
+                        ];
+                    })
                     ->action(function (Collection $records): void {
                         $updatedCount = 0;
 
@@ -929,6 +1003,92 @@ class DeliveriesTable
                         && (Livewire::current()?->activeTab ?? null) === 'pending'),
             ])
             ->headerActions([
+                Action::make('deliveryStatistics')
+                    ->label('إحصائيات التوصيل')
+                    ->icon('heroicon-o-chart-bar')
+                    ->visible(fn (): bool => in_array(auth()->user()?->role, ['admin', 'confirmation', 'delivery_man'], true))
+                    ->form([
+                        DatePicker::make('from')->label('من'),
+                        DatePicker::make('until')->label('إلى'),
+                        Select::make('delivery_man_id')
+                            ->label('الموزع')
+                            ->options(
+                                User::query()
+                                    ->where('role', 'delivery_man')
+                                    ->orderBy('name')
+                                    ->pluck('name', 'id')
+                                    ->toArray()
+                            )
+                            ->searchable()
+                            ->preload()
+                            ->visible(fn (): bool => in_array(auth()->user()?->role, ['admin', 'confirmation'], true)),
+                    ])
+                    ->action(function (array $data): void {
+                        $query = Order::query()
+                            ->where('status', 'delivered')
+                            ->whereNotNull('delivery_man_id');
+
+                        if (auth()->user()?->role === 'delivery_man') {
+                            $query->where('delivery_man_id', auth()->id());
+                        } elseif (filled($data['delivery_man_id'] ?? null)) {
+                            $query->where('delivery_man_id', $data['delivery_man_id']);
+                        }
+
+                        if (filled($data['from'] ?? null)) {
+                            $query->whereDate('updated_at', '>=', $data['from']);
+                        }
+
+                        if (filled($data['until'] ?? null)) {
+                            $query->whereDate('updated_at', '<=', $data['until']);
+                        }
+
+                        $deliveredCount = (clone $query)->count();
+                        $gross = (float) (clone $query)->sum('total_price');
+                        $fees = (float) (clone $query)->sum('delivery_fee');
+                        $net = $gross - $fees;
+
+                        $body = 'عدد الطلبيات المسلمة: '.$deliveredCount
+                            ."\n".'المجموع الكلي: '.number_format($gross, 2).' MAD'
+                            ."\n".'مجموع تكاليف التوصيل (Benefit): '.number_format($fees, 2).' MAD'
+                            ."\n".'المبلغ الواجب تسليمه: '.number_format($net, 2).' MAD';
+
+                        if (in_array(auth()->user()?->role, ['admin', 'confirmation'], true)) {
+                            $perDelivery = Order::query()
+                                ->where('status', 'delivered')
+                                ->whereNotNull('delivery_man_id')
+                                ->when(
+                                    filled($data['from'] ?? null),
+                                    fn (Builder $q): Builder => $q->whereDate('updated_at', '>=', $data['from'])
+                                )
+                                ->when(
+                                    filled($data['until'] ?? null),
+                                    fn (Builder $q): Builder => $q->whereDate('updated_at', '<=', $data['until'])
+                                )
+                                ->selectRaw('delivery_man_id, COUNT(*) as delivered_count, SUM(delivery_fee) as fees_sum')
+                                ->groupBy('delivery_man_id')
+                                ->get();
+
+                            if ($perDelivery->isNotEmpty()) {
+                                $names = User::query()
+                                    ->whereIn('id', $perDelivery->pluck('delivery_man_id'))
+                                    ->pluck('name', 'id');
+
+                                $lines = $perDelivery->map(function ($row) use ($names): string {
+                                    $name = $names[$row->delivery_man_id] ?? ('#'.$row->delivery_man_id);
+
+                                    return $name.' => طلبيات: '.$row->delivered_count.' | Benefit: '.number_format((float) ($row->fees_sum ?? 0), 2).' MAD';
+                                })->implode("\n");
+
+                                $body .= "\n\n".'ربح كل موزع:'."\n".$lines;
+                            }
+                        }
+
+                        Notification::make()
+                            ->title('إحصائيات التوصيل')
+                            ->body($body)
+                            ->success()
+                            ->send();
+                    }),
                 Action::make('importShippingInvoices')
                     ->label('استيراد فاتورة الشحن')
                     ->icon('heroicon-o-arrow-up-tray')

@@ -29,7 +29,7 @@ class ShippingCalculator
         $subtotal = (float) $cart->subtotal();
 
         $requiresPaid = $lines->contains(function (array $line): bool {
-            return ! $line['product']->free_shipping;
+            return ! $line['product']->qualifiesForFreeShipping();
         });
 
         if (! $requiresPaid) {
@@ -104,7 +104,11 @@ class ShippingCalculator
             return 0.0;
         }
 
-        $products = Product::query()->whereIn('id', $productIds)->get()->keyBy('id');
+        $products = Product::query()
+            ->whereIn('id', $productIds)
+            ->with('upsellParents')
+            ->get()
+            ->keyBy('id');
 
         $requiresPaid = false;
         foreach ($orderItems as $item) {
@@ -116,7 +120,7 @@ class ShippingCalculator
                 continue;
             }
             $product = $products->get($pid);
-            if ($product !== null && ! $product->free_shipping) {
+            if ($product !== null && ! $product->qualifiesForFreeShipping()) {
                 $requiresPaid = true;
                 break;
             }

@@ -49,6 +49,6 @@ class UserResource extends Resource
 
     public static function canViewAny(): bool
     {
-        return auth()->user()?->role !== 'delivery_man';
+        return ! in_array(auth()->user()?->role, ['delivery_man', 'manager'], true);
     }
 }

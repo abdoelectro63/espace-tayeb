@@ -15,6 +15,7 @@ class OrderItemsRelationManager extends RelationManager
     public function table(Table $table): Table
     {
         return $table
+            ->modifyQueryUsing(fn ($query) => $query->with(['product', 'productVariation']))
             ->recordTitleAttribute('id')
             ->columns([
                 Tables\Columns\ImageColumn::make('product.main_image')
@@ -24,6 +25,10 @@ class OrderItemsRelationManager extends RelationManager
                 Tables\Columns\TextColumn::make('product.name')
                     ->label('المنتج')
                     ->searchable(),
+                Tables\Columns\TextColumn::make('variation_label')
+                    ->label('النوع')
+                    ->getStateUsing(fn ($record): string => $record->productVariation?->label() ?? '—')
+                    ->toggleable(),
                 Tables\Columns\TextColumn::make('quantity')
                     ->label('الكمية'),
                 Tables\Columns\TextColumn::make('unit_price')

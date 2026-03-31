@@ -12,13 +12,19 @@ class ProductController extends Controller
     {
         abort_unless((bool) $product->is_active, 404);
 
-        $product->loadMissing('category.parent');
+        $product->loadMissing([
+            'category.parent',
+            'upsellProduct.category.parent',
+            'upsellProduct.upsellParents',
+            'upsellParents',
+            'variations',
+        ]);
 
         $expectedPath = $product->category?->storePath();
         abort_if(blank($expectedPath), 404);
 
         if (trim($categoryPath, '/') !== trim($expectedPath, '/')) {
-            return redirect()->route('product.show', $product->seoRouteParams(), 301);
+            return redirect()->route('store.category', $product->seoRouteParams(), 301);
         }
 
         return $this->renderShowPage($product);
@@ -26,13 +32,19 @@ class ProductController extends Controller
 
     private function renderShowPage(Product $product): View
     {
-        $product->loadMissing('category.parent');
+        $product->loadMissing([
+            'category.parent',
+            'upsellProduct.category.parent',
+            'upsellProduct.upsellParents',
+            'upsellParents',
+            'variations',
+        ]);
 
         $relatedProducts = Product::query()
             ->where('category_id', $product->category_id)
             ->where('id', '!=', $product->id)
             ->where('is_active', true)
-            ->with('category.parent')
+            ->with(['category.parent', 'upsellParents'])
             ->latest()
             ->limit(4)
             ->get();

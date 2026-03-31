@@ -1,5 +1,6 @@
 @props([
     'cartCount' => 0,
+    'topMenu' => null,
 ])
 
 @php
@@ -53,9 +54,18 @@
             </div>
 
             <nav class="hidden items-center justify-center gap-8 text-sm font-semibold lg:flex" style="color: {{ $menuTextColor }};">
-                <a href="{{ route('store.home') }}#categories" class="transition opacity-95 hover:opacity-70">Kitchenware</a>
-                <a href="{{ route('store.home') }}#products" class="transition opacity-95 hover:opacity-70">Appliances</a>
-                <a href="{{ route('store.home') }}#products" class="transition opacity-95 hover:opacity-70">Homewares</a>
+                @if (! empty($topMenu?->items) && $topMenu->items->isNotEmpty())
+                    @foreach ($topMenu->items as $item)
+                        @php($href = $item->resolveUrl())
+                        @if (filled($href))
+                            <a href="{{ $href }}" class="transition opacity-95 hover:opacity-70">{{ $item->label }}</a>
+                        @endif
+                    @endforeach
+                @else
+                    <a href="{{ route('store.home') }}#categories" class="transition opacity-95 hover:opacity-70">Kitchenware</a>
+                    <a href="{{ route('store.home') }}#products" class="transition opacity-95 hover:opacity-70">Appliances</a>
+                    <a href="{{ route('store.home') }}#products" class="transition opacity-95 hover:opacity-70">Homewares</a>
+                @endif
             </nav>
 
             <div class="flex items-center justify-end gap-2 sm:gap-3">
@@ -98,9 +108,18 @@
 
     <div x-show="mobileOpen" x-cloak x-transition class="lg:hidden" style="background-color: {{ $headerBgColor }};">
         <nav class="mx-auto max-w-6xl space-y-1 px-4 pb-4 text-sm font-semibold sm:px-6" style="color: {{ $menuTextColor }};">
-            <a @click="mobileOpen = false" href="{{ route('store.home') }}#categories" class="block rounded-lg px-3 py-2 hover:bg-white/10">Kitchenware</a>
-            <a @click="mobileOpen = false" href="{{ route('store.home') }}#products" class="block rounded-lg px-3 py-2 hover:bg-white/10">Appliances</a>
-            <a @click="mobileOpen = false" href="{{ route('store.home') }}#products" class="block rounded-lg px-3 py-2 hover:bg-white/10">Homewares</a>
+            @if (! empty($topMenu?->items) && $topMenu->items->isNotEmpty())
+                @foreach ($topMenu->items as $item)
+                    @php($href = $item->resolveUrl())
+                    @if (filled($href))
+                        <a @click="mobileOpen = false" href="{{ $href }}" class="block rounded-lg px-3 py-2 hover:bg-white/10">{{ $item->label }}</a>
+                    @endif
+                @endforeach
+            @else
+                <a @click="mobileOpen = false" href="{{ route('store.home') }}#categories" class="block rounded-lg px-3 py-2 hover:bg-white/10">Kitchenware</a>
+                <a @click="mobileOpen = false" href="{{ route('store.home') }}#products" class="block rounded-lg px-3 py-2 hover:bg-white/10">Appliances</a>
+                <a @click="mobileOpen = false" href="{{ route('store.home') }}#products" class="block rounded-lg px-3 py-2 hover:bg-white/10">Homewares</a>
+            @endif
         </nav>
     </div>
 </header>

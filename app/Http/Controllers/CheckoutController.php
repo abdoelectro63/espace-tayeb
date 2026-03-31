@@ -91,11 +91,13 @@ class CheckoutController extends Controller
             foreach ($cart->lines() as $line) {
                 /** @var Product $product */
                 $product = $line['product'];
+                $variation = $line['product_variation'] ?? null;
                 OrderProduct::query()->create([
                     'order_id' => $order->id,
                     'product_id' => $product->id,
+                    'product_variation_id' => $variation?->id,
                     'quantity' => $line['quantity'],
-                    'unit_price' => $product->effectivePrice(),
+                    'unit_price' => $product->finalUnitPriceForCart($variation?->id),
                 ]);
             }
 

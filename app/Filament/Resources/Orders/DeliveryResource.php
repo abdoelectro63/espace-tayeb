@@ -125,7 +125,7 @@ class DeliveryResource extends Resource
 
     public static function canViewAny(): bool
     {
-        return in_array(auth()->user()?->role, ['admin', 'delivery_man', 'confirmation'], true);
+        return in_array(auth()->user()?->role, ['admin', 'delivery_man', 'confirmation', 'manager'], true);
     }
 
     public static function getPages(): array

@@ -14,7 +14,7 @@ class Order extends Model
     protected $fillable = [
         'number', 'customer_name', 'customer_phone',
         'city', 'shipping_address', 'total_price',
-        'shipping_fee', 'shipping_zone',
+        'shipping_fee', 'delivery_fee', 'shipping_zone',
         'status', 'notes', 'delivery_man_id', 'payment_status', 'paid_at',
         'shipping_company', 'shipping_company_id', 'tracking_number', 'shipping_provider_status',
     ];
@@ -22,6 +22,7 @@ class Order extends Model
     protected $casts = [
         'paid_at' => 'datetime',
         'shipping_fee' => 'decimal:2',
+        'delivery_fee' => 'decimal:2',
     ];
 
     protected static function booted(): void

@@ -43,11 +43,11 @@
                             @foreach($lines as $line)
                                 @php $product = $line['product']; @endphp
                                 <li class="flex gap-4 p-4 sm:p-5">
-                                    <a href="{{ route('product.show', $product->seoRouteParams()) }}" class="shrink-0">
+                                    <a href="{{ route('store.category', $product->seoRouteParams()) }}" class="shrink-0">
                                         <img src="{{ $product->mainImageUrl() }}" alt="" class="h-20 w-20 rounded-lg border border-zinc-100 object-cover sm:h-24 sm:w-24">
                                     </a>
                                     <div class="min-w-0 flex-1">
-                                        <a href="{{ route('product.show', $product->seoRouteParams()) }}" class="font-semibold text-zinc-900 hover:text-emerald-800">{{ $product->name }}</a>
+                                        <a href="{{ route('store.category', $product->seoRouteParams()) }}" class="font-semibold text-zinc-900 hover:text-emerald-800">{{ $product->name }}</a>
                                         @if($product->free_shipping)
                                             <p class="mt-1 text-xs font-medium text-emerald-700">التوصيل مجاني لهذا المنتج</p>
                                         @endif

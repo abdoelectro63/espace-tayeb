@@ -31,16 +31,20 @@
                         @php
                             /** @var \App\Models\Product $product */
                             $product = $line['product'];
+                            $variation = $line['product_variation'] ?? null;
+                            $vid = $variation?->id;
                         @endphp
                         <li
                             class="flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:gap-6 sm:p-6"
                             data-cart-page-line
                             data-cart-line
                             data-product-id="{{ $product->id }}"
+                            data-product-variation-id="{{ $vid ?? '' }}"
+                            data-cart-line-key="{{ $product->id }}|{{ $vid ?? 0 }}"
                             data-qty="{{ $line['quantity'] }}"
                             data-stock="{{ $product->maxOrderableQuantity() }}"
                         >
-                            <a href="{{ route('product.show', $product->seoRouteParams()) }}" class="shrink-0">
+                            <a href="{{ route('store.category', $product->seoRouteParams()) }}" class="shrink-0">
                                 <img
                                     src="{{ $product->mainImageUrl() }}"
                                     alt="{{ $product->name }}"
@@ -48,14 +52,14 @@
                                 >
                             </a>
                             <div class="min-w-0 flex-1">
-                                <a href="{{ route('product.show', $product->seoRouteParams()) }}" class="font-semibold text-zinc-900 hover:text-emerald-800">
-                                    {{ $product->name }}
+                                <a href="{{ route('store.category', $product->seoRouteParams()) }}" class="font-semibold text-zinc-900 hover:text-emerald-800">
+                                    {{ $product->name }}@if($variation)<span class="font-normal text-zinc-600"> — {{ $variation->label() }}</span>@endif
                                 </a>
                                 @if($product->free_shipping)
                                     <p class="mt-1 text-xs font-medium text-emerald-700">التوصيل مجاني لهذا المنتج</p>
                                 @endif
                                 <p class="mt-1 text-sm text-zinc-500">
-                                    {{ number_format($product->effectivePrice(), 2) }} MAD / وحدة
+                                    {{ number_format($product->finalUnitPriceForCart($variation?->id), 2) }} MAD / وحدة
                                 </p>
                             </div>
                             <div class="flex flex-wrap items-center gap-3">
@@ -89,7 +93,7 @@
                             <div class="text-left sm:text-right">
                                 <p class="text-lg font-bold text-zinc-900" data-cart-line-total>{{ number_format($line['line_total'], 2) }} <span class="text-sm font-semibold text-zinc-500">MAD</span></p>
                             </div>
-                            <form method="post" action="{{ route('store.cart.remove', $product) }}" onsubmit="return confirm('إزالة هذا المنتج من السلة؟');">
+                            <form method="post" action="{{ route('store.cart.remove', $product).($vid ? '?product_variation_id='.$vid : '') }}" onsubmit="return confirm('إزالة هذا المنتج من السلة؟');">
                                 @csrf
                                 @method('DELETE')
                                 <button type="submit" class="text-sm font-medium text-rose-600 hover:text-rose-800">

@@ -2,12 +2,14 @@
 
 namespace App\Filament\Resources\Products\Schemas;
 
+use App\Models\Product;
 use App\Support\ImageOptimizer;
 use Filament\Forms;
 use Filament\Forms\Components\BaseFileUpload;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Schema; // تم تصحيح المسار هنا
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Str;
 use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
@@ -74,6 +76,87 @@ class ProductForm
                             ->helperText('إن كان مفعّلاً، لا تُحتسب رسوم التوصيل لهذا المنتج عند الطلب.')
                             ->default(false),
                     ])->columns(3),
+
+                Section::make('عروض إضافية و upsell')
+                    ->description('اربط منتجاً ثانياً ثم حدّد العرض: النسبة و«توصيل مجاني» يُطبَّقان على المنتج الثاني فقط، لا على هذا المنتج.')
+                    ->schema([
+                        Forms\Components\Select::make('upsell_id')
+                            ->label('منتج مقترَح (البيع المجمّع)')
+                            ->relationship(
+                                name: 'upsellProduct',
+                                titleAttribute: 'name',
+                                modifyQueryUsing: function (Builder $query): void {
+                                    $query->where('is_active', true);
+                                    $record = request()->route('record');
+                                    if ($record instanceof Product) {
+                                        $query->whereKeyNot($record->getKey());
+                                    }
+                                },
+                            )
+                            ->searchable()
+                            ->preload()
+                            ->nullable()
+                            ->live()
+                            ->helperText('يظهر في المتجر كقسم «اشتري الاثنين معاً» عند توفر المخزون.'),
+                        Forms\Components\Select::make('offer_type')
+                            ->label('نوع العرض (على المنتج المقترَح)')
+                            ->options([
+                                Product::OFFER_NONE => 'بدون',
+                                Product::OFFER_PERCENTAGE => 'خصم نسبة على سعر المنتج المقترَح',
+                                Product::OFFER_FREE_DELIVERY => 'توصيل مجاني للمنتج المقترَح (عرض)',
+                            ])
+                            ->default(Product::OFFER_NONE)
+                            ->required()
+                            ->native(false)
+                            ->live()
+                            ->visible(fn (Get $get): bool => filled($get('upsell_id'))),
+                        Forms\Components\TextInput::make('offer_value')
+                            ->label('نسبة الخصم على المنتج المقترَح')
+                            ->numeric()
+                            ->minValue(0)
+                            ->maxValue(100)
+                            ->suffix('%')
+                            ->visible(fn (Get $get): bool => filled($get('upsell_id')) && $get('offer_type') === Product::OFFER_PERCENTAGE)
+                            ->required(fn (Get $get): bool => filled($get('upsell_id')) && $get('offer_type') === Product::OFFER_PERCENTAGE),
+                    ])
+                    ->columns(2),
+
+                Section::make('متغيرات المنتج')
+                    ->description('اختياري: ألوان، مقاسات، إلخ. عند وجود متغيرات، يختار الزبون النوع ويُحسب السعر من سعر المتغير.')
+                    ->schema([
+                        Forms\Components\Repeater::make('variations')
+                            ->relationship('variations')
+                            ->schema([
+                                Forms\Components\TextInput::make('name')
+                                    ->label('اسم الخاصية')
+                                    ->placeholder('مثال: اللون')
+                                    ->required()
+                                    ->maxLength(100),
+                                Forms\Components\TextInput::make('value')
+                                    ->label('القيمة')
+                                    ->placeholder('مثال: أحمر')
+                                    ->required()
+                                    ->maxLength(255),
+                                Forms\Components\TextInput::make('sku')
+                                    ->label('SKU')
+                                    ->maxLength(100),
+                                Forms\Components\TextInput::make('price')
+                                    ->label('الثمن')
+                                    ->numeric()
+                                    ->prefix('MAD')
+                                    ->required(),
+                                Forms\Components\Toggle::make('is_default')
+                                    ->label('افتراضي')
+                                    ->helperText('يُعرض كاختيار أولي في المتجر.')
+                                    ->default(false),
+                            ])
+                            ->columns(2)
+                            ->addActionLabel('إضافة متغير')
+                            ->collapsible()
+                            ->reorderable()
+                            ->defaultItems(0),
+                    ])
+                    ->columns(1),
 
                 Section::make('المخزون والتوفر')
                     ->schema([

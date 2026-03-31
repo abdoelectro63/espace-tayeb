@@ -66,7 +66,12 @@ class OrderResource extends Resource
 
     public static function canViewAny(): bool
     {
-        return in_array(auth()->user()?->role, ['admin', 'confirmation'], true);
+        return in_array(auth()->user()?->role, ['admin', 'confirmation', 'manager'], true);
+    }
+
+    public static function canAccess(): bool
+    {
+        return static::canViewAny();
     }
 
     public static function getEditAuthorizationResponse(Model $record): Response

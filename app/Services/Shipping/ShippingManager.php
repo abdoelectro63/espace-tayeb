@@ -516,7 +516,7 @@ class ShippingManager
                 'price' => (string) ((float) ($order->total_price ?? 0)),
                 'note' => (string) ($order->notes ?? ''),
                 'product' => $this->buildExpressProductLabel($order),
-                'internal_id' => $this->buildExpressInternalReference($order),
+                'internal_id' => $this->buildInternalReference($order),
             ];
 
             foreach (['receiver_name', 'address', 'city', 'phone', 'price', 'product'] as $required) {
@@ -1210,7 +1210,7 @@ class ShippingManager
         ?int $batchIndex = null,
         ?int $batchTotal = null,
     ): ?array {
-        $ref = $this->buildExpressInternalReference($order);
+        $ref = $this->buildInternalReference($order);
         $orderIdStr = (string) $order->id;
 
         $lists = $this->collectExpressPackageLists($json);
@@ -1366,6 +1366,11 @@ class ShippingManager
         return $pkg !== null ? $this->extractTrackingFromPackageRow($pkg) : null;
     }
 
+    /**
+     * Product code(s) from Product::$code (Code Produit). Vitips and Express Coursier both use this as
+     * internal_id. When no code exists, falls back to ord-{orderId}. For multi-order Express batches with
+     * duplicate codes, findExpressPackageForOrder matches by batch index first.
+     */
     private function buildInternalReference(Order $order): string
     {
         $order->loadMissing('orderItems.product');
@@ -1385,29 +1390,5 @@ class ShippingManager
         }
 
         return (string) $codes->implode('-');
-    }
-
-    /**
-     * Unique per order for Express Coursier batch (product-code-only refs collide across orders).
-     */
-    private function buildExpressInternalReference(Order $order): string
-    {
-        $order->loadMissing('orderItems.product');
-
-        $codes = $order->orderItems
-            ->map(fn ($item): ?string => $item->product?->code)
-            ->filter()
-            ->unique()
-            ->values();
-
-        if ($codes->isEmpty()) {
-            return 'ord-'.(string) $order->id;
-        }
-
-        if ($codes->count() === 1) {
-            return 'ord-'.(string) $order->id.'-'.(string) $codes->first();
-        }
-
-        return 'ord-'.(string) $order->id.'-'.(string) $codes->implode('-');
     }
 }

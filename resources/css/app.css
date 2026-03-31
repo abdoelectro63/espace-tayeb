@@ -16,3 +16,28 @@
     --font-sans: 'Cairo', 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
         'Segoe UI Symbol', 'Noto Color Emoji';
 }
+
+/* Store footer: explicit colors so layout always matches design (Tailwind scan/build can miss arbitrary classes). */
+@layer components {
+    .store-footer {
+        background-color: #000000;
+        color: #ffffff;
+        border-top: 1px solid #27272a;
+    }
+
+    .store-footer .store-footer-title {
+        color: #ff751f;
+    }
+
+    .store-footer a {
+        color: #ffffff;
+    }
+
+    .store-footer a:hover {
+        color: #ff751f;
+    }
+
+    .store-footer .store-footer-divider {
+        border-top-color: rgba(255, 255, 255, 0.1);
+    }
+}

@@ -3,6 +3,8 @@
 namespace App\Filament\Resources\Orders\Pages;
 
 use App\Filament\Resources\Orders\DeliveryResource;
+use App\Filament\Resources\Orders\Widgets\DeliveryMonthlyFeesChart;
+use App\Filament\Resources\Orders\Widgets\DeliveryMonthlyStatsOverview;
 use App\Filament\Resources\ShippingInvoiceImports\ShippingInvoiceImportResource;
 use Filament\Actions\Action;
 use Filament\Resources\Pages\ListRecords;
@@ -12,6 +14,26 @@ use Illuminate\Database\Eloquent\Builder;
 class ListDeliveries extends ListRecords
 {
     protected static string $resource = DeliveryResource::class;
+
+    protected function getHeaderWidgets(): array
+    {
+        if (! in_array(auth()->user()?->role, ['admin', 'confirmation', 'delivery_man'], true)) {
+            return [];
+        }
+
+        return [
+            DeliveryMonthlyStatsOverview::class,
+            DeliveryMonthlyFeesChart::class,
+        ];
+    }
+
+    public function getHeaderWidgetsColumns(): int|array
+    {
+        return [
+            'md' => 1,
+            'xl' => 2,
+        ];
+    }
 
     protected function getHeaderActions(): array
     {

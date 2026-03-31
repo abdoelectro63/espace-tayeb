@@ -62,6 +62,32 @@ class ProductsTable
                     ->color(fn (?bool $state): string => $state ? 'success' : 'gray')
                     ->toggleable(isToggledHiddenByDefault: true),
 
+                Tables\Columns\TextColumn::make('offer_type')
+                    ->label('عرض إضافي')
+                    ->formatStateUsing(function (?string $state, Product $record): string {
+                        if ($state === Product::OFFER_PERCENTAGE && $record->offer_value !== null) {
+                            return 'خصم %'.(string) $record->offer_value;
+                        }
+
+                        return match ($state) {
+                            Product::OFFER_FREE_DELIVERY => 'توصيل مجاني',
+                            Product::OFFER_PERCENTAGE => 'خصم %',
+                            default => '—',
+                        };
+                    })
+                    ->badge()
+                    ->color(fn (?string $state): string => match ($state) {
+                        Product::OFFER_PERCENTAGE => 'warning',
+                        Product::OFFER_FREE_DELIVERY => 'success',
+                        default => 'gray',
+                    })
+                    ->toggleable(isToggledHiddenByDefault: true),
+
+                Tables\Columns\TextColumn::make('upsellProduct.name')
+                    ->label('منتج مجمّع')
+                    ->placeholder('—')
+                    ->toggleable(isToggledHiddenByDefault: true),
+
                 Tables\Columns\ToggleColumn::make('is_active')
                     ->label('عرض في المتجر'),
                 Tables\Columns\TextColumn::make('stock')

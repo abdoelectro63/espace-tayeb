@@ -22,6 +22,11 @@ class VitipsOrders extends Page
 
     protected string $view = 'filament.pages.vitips-orders';
 
+    public static function canAccess(): bool
+    {
+        return auth()->user()?->role !== 'delivery_man';
+    }
+
     /**
      * @var list<array{
      *   tracking_number:string,
