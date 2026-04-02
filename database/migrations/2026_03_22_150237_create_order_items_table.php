@@ -11,14 +11,17 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('order_items', function (Blueprint $table) {
-            $table->id();
-            $table->foreignId('order_id')->constrained()->onDelete('cascade');
-            $table->foreignId('product_id')->constrained();
-            $table->integer('quantity')->default(1);
-            $table->decimal('unit_price', 10, 2); // السعر وقت الشراء (لأن السعر قد يتغير لاحقاً)
-            $table->timestamps();
-        });
+        
+        if (!Schema::hasTable('order_items')) {
+            Schema::create('order_items', function (Blueprint $table) {
+                $table->id();
+                $table->foreignId('order_id')->constrained()->onDelete('cascade');
+                $table->foreignId('product_id')->constrained();
+                $table->integer('quantity')->default(1);
+                $table->decimal('unit_price', 10, 2); // السعر وقت الشراء (لأن السعر قد يتغير لاحقاً)
+                $table->timestamps();
+            });
+        }
     }
 
     /**
