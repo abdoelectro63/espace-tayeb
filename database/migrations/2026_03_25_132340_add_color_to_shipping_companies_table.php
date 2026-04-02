@@ -9,13 +9,14 @@ return new class extends Migration
     /**
      * Run the migrations.
      */
-    public function up(): void
+    public function up()
     {
         Schema::table('shipping_companies', function (Blueprint $table) {
-            $table->string('color')->default('info')->after('name');
+            if (!Schema::hasColumn('shipping_companies', 'color')) {
+                $table->string('color')->default('info');
+            }
         });
     }
-
     /**
      * Reverse the migrations.
      */
