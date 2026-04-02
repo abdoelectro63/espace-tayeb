@@ -17,7 +17,8 @@ return new class extends Migration
             $table->text('description')->nullable(); // الوصف
             $table->decimal('price', 10, 2); // الثمن الأصلي
             $table->decimal('discount_price', 10, 2)->nullable(); // الثمن بعد التخفيض
-            $table->json('images')->nullable()->after('description');
+           // $table->json('images')->nullable()->after('description');
+           $table->json('images')->nullable();
             $table->boolean('is_active')->default(true); // هل المنتج معروض أم مخفي
             $table->timestamps();
         });
