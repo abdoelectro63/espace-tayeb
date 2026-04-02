@@ -123,8 +123,10 @@ class StoreController extends Controller
 
     private function renderCategory(Category $category): View
     {
+        $categoryIds = $category->selfAndDescendantCategoryIds();
+
         $products = Product::query()
-            ->where('category_id', $category->id)
+            ->whereIn('category_id', $categoryIds)
             ->where('is_active', true)
             ->with(['category', 'upsellParents'])
             ->latest()

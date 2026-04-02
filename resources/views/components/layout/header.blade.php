@@ -1,21 +1,12 @@
 @props([
     'cartCount' => 0,
     'topMenu' => null,
+    'logoUrl' => null,
 ])
 
 @php
     $branding = \App\Models\ShippingSetting::query()->first();
-    $logoPath = $branding?->logo_path;
-    $logoUrl = asset('images/logo.svg');
-
-    if (filled($logoPath)) {
-        $disk = \Illuminate\Support\Facades\Storage::disk('public');
-        $logoUrl = $disk->url($logoPath);
-
-        if ($disk->exists($logoPath)) {
-            $logoUrl .= '?v='.$disk->lastModified($logoPath);
-        }
-    }
+    $logoUrl = $logoUrl ?? \App\Models\ShippingSetting::storeLogoUrl();
 
     $headerBgColor = $branding?->header_bg_color ?: '#000000';
     $menuTextColor = $branding?->menu_text_color ?: '#ffffff';

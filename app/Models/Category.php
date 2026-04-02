@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Str;
+use InvalidArgumentException;
 
 class Category extends Model
 {
@@ -30,6 +31,79 @@ class Category extends Model
     public function childrenRecursive(): HasMany
     {
         return $this->children()->with('childrenRecursive');
+    }
+
+    /**
+     * This category's id plus every descendant category id (any depth).
+     * Use with Product queries: `whereIn('category_id', $category->selfAndDescendantCategoryIds())`.
+     *
+     * Implemented with a single recursive CTE on supported drivers to avoid N+1 queries
+     * and to avoid loading the full category tree into memory.
+     *
+     * @return list<int>
+     */
+    public function selfAndDescendantCategoryIds(): array
+    {
+        $id = (int) $this->getKey();
+        if ($id < 1) {
+            throw new InvalidArgumentException('Category must be persisted with a valid id.');
+        }
+
+        $connection = $this->getConnection();
+        $driver = $connection->getDriverName();
+
+        if (in_array($driver, ['mysql', 'mariadb', 'pgsql', 'sqlite'], true)) {
+            $grammar = $connection->getQueryGrammar();
+            $table = $grammar->wrapTable($this->getTable());
+            $idCol = $grammar->wrap('id');
+            $parentCol = $grammar->wrap('category_id');
+
+            $sql = "
+                WITH RECURSIVE subtree AS (
+                    SELECT {$idCol} FROM {$table} WHERE {$idCol} = ?
+                    UNION ALL
+                    SELECT c.{$idCol} FROM {$table} AS c
+                    INNER JOIN subtree AS s ON c.{$parentCol} = s.{$idCol}
+                )
+                SELECT {$idCol} AS id FROM subtree
+            ";
+
+            $rows = $connection->select($sql, [$id]);
+
+            return array_values(array_map(fn ($row) => (int) $row->id, $rows));
+        }
+
+        return $this->selfAndDescendantCategoryIdsBreadthFirst($id);
+    }
+
+    /**
+     * One query per tree level (bounded by depth, not product count).
+     *
+     * @return list<int>
+     */
+    protected function selfAndDescendantCategoryIdsBreadthFirst(int $rootId): array
+    {
+        $ids = [$rootId];
+        $frontier = [$rootId];
+
+        while ($frontier !== []) {
+            $next = self::query()
+                ->whereIn('category_id', $frontier)
+                ->pluck('id')
+                ->all();
+
+            if ($next === []) {
+                break;
+            }
+
+            foreach ($next as $childId) {
+                $ids[] = (int) $childId;
+            }
+
+            $frontier = $next;
+        }
+
+        return $ids;
     }
 
     public function scopeOnlyParents(Builder $query): Builder

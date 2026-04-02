@@ -19,7 +19,6 @@ use Illuminate\Routing\Middleware\SubstituteBindings;
 use Illuminate\Session\Middleware\StartSession;
 use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\Facades\Route;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
 
 class DeliveryPanelProvider extends PanelProvider
@@ -30,8 +29,9 @@ class DeliveryPanelProvider extends PanelProvider
             ->id('delivery')
             ->path('delivery')
             ->login()
-            ->brandLogo(fn (): string => $this->resolveBrandLogoUrl())
-            ->darkModeBrandLogo(fn (): string => $this->resolveBrandLogoUrl())
+            ->brandLogo(fn (): string => ShippingSetting::storeLogoUrl())
+            ->darkModeBrandLogo(fn (): string => ShippingSetting::storeLogoUrl())
+            ->favicon(fn (): string => ShippingSetting::storeLogoUrl())
             ->colors([
                 'primary' => Color::Amber,
             ])
@@ -67,23 +67,5 @@ class DeliveryPanelProvider extends PanelProvider
             ->authMiddleware([
                 Authenticate::class,
             ]);
-    }
-
-    private function resolveBrandLogoUrl(): string
-    {
-        $branding = ShippingSetting::firstOrNull();
-        $logoPath = $branding?->logo_path;
-        $logoUrl = asset('images/logo.svg');
-
-        if (filled($logoPath)) {
-            $disk = Storage::disk('public');
-            $logoUrl = $disk->url($logoPath);
-
-            if ($disk->exists($logoPath)) {
-                $logoUrl .= '?v='.$disk->lastModified($logoPath);
-            }
-        }
-
-        return $logoUrl;
     }
 }

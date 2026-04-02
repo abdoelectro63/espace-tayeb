@@ -56,6 +56,7 @@ class MenuForm
                                     ->options([
                                         'page' => 'Page',
                                         'category' => 'Category',
+                                        'contact' => 'Contact us',
                                         'custom' => 'Custom URL',
                                     ])
                                     ->default('page')
@@ -88,6 +89,14 @@ class MenuForm
 
     public static function mutateRepeaterItemBeforeFill(array $data): array
     {
+        if (filled($data['custom_url'] ?? null) && self::isContactPageUrl((string) $data['custom_url'])) {
+            $data['link_kind'] = 'contact';
+            $data['page_id'] = null;
+            $data['category_id'] = null;
+
+            return $data;
+        }
+
         if (filled($data['custom_url'] ?? null)) {
             $data['link_kind'] = 'custom';
             $data['page_id'] = null;
@@ -123,10 +132,6 @@ class MenuForm
      * @param  array<string, mixed>  $data
      * @return array<string, mixed>
      */
-    /**
-     * @param  array<string, mixed>  $data
-     * @return array<string, mixed>
-     */
     public static function stripVirtualFields(array $data): array
     {
         $kind = $data['link_kind'] ?? 'custom';
@@ -143,11 +148,31 @@ class MenuForm
             $data['linkable_type'] = Category::class;
             $data['linkable_id'] = $categoryId;
             $data['custom_url'] = null;
+        } elseif ($kind === 'contact') {
+            $data['linkable_type'] = null;
+            $data['linkable_id'] = null;
+            $data['custom_url'] = route('store.contact');
         } else {
             $data['linkable_type'] = null;
             $data['linkable_id'] = null;
         }
 
         return $data;
+    }
+
+    /**
+     * Contact menu items are stored as {@see MenuItem::$custom_url} pointing at the named contact route.
+     */
+    public static function isContactPageUrl(string $url): bool
+    {
+        $contact = route('store.contact');
+        $a = parse_url(rtrim($url, '/'), PHP_URL_PATH);
+        $b = parse_url(rtrim($contact, '/'), PHP_URL_PATH);
+
+        if ($a !== null && $b !== null && rtrim((string) $a, '/') === rtrim((string) $b, '/')) {
+            return true;
+        }
+
+        return rtrim($url, '/') === rtrim($contact, '/');
     }
 }

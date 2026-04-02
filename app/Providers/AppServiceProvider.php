@@ -6,6 +6,7 @@ use App\Models\FooterLogo;
 use App\Models\Menu;
 use App\Models\MenuItem;
 use App\Models\Page;
+use App\Models\ShippingSetting;
 use App\Observers\MenuItemObserver;
 use App\Observers\MenuObserver;
 use App\Observers\PageObserver;
@@ -119,6 +120,7 @@ class AppServiceProvider extends ServiceProvider
                 'footerMenu3' => $menuService->menuForLocation(Menu::LOCATION_FOOTER_3),
                 'footerSettings' => app(FooterSettings::class),
                 'footerLogoUrl' => FooterLogo::query()->first()?->getFirstMediaUrl('logo'),
+                'storeLogoUrl' => ShippingSetting::storeLogoUrl(),
             ]);
         });
 

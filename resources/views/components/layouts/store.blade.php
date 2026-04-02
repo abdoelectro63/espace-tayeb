@@ -35,6 +35,12 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>{{ $pageTitle }}</title>
     <link rel="canonical" href="{{ $canonicalUrl }}">
+    @php
+        $faviconHref = $storeLogoUrl ?? \App\Models\ShippingSetting::storeLogoUrl();
+        $faviconType = \App\Models\ShippingSetting::faviconMimeTypeForLogoUrl($faviconHref);
+    @endphp
+    <link rel="icon" href="{{ $faviconHref }}" type="{{ $faviconType }}">
+    <link rel="apple-touch-icon" href="{{ $faviconHref }}">
     @if($breadcrumbSchema)
         <script type="application/ld+json">{!! json_encode($breadcrumbSchema, JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES) !!}</script>
     @endif
@@ -44,7 +50,11 @@
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
 <body class="min-h-screen bg-zinc-50 font-sans text-zinc-900 antialiased">
-    <x-layout.header :cart-count="$cartCount ?? 0" :top-menu="$topMenu ?? null" />
+    <x-layout.header
+        :cart-count="$cartCount ?? 0"
+        :top-menu="$topMenu ?? null"
+        :logo-url="$storeLogoUrl ?? null"
+    />
 
     @if(session('cart_success'))
         <div class="border-b border-orange-100 bg-orange-50 px-4 py-2 text-center text-sm font-medium text-orange-800">
