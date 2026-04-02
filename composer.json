@@ -15,6 +15,7 @@
         "laravel/tinker": "^3.0",
         "maatwebsite/excel": "^3.1",
         "smalot/pdfparser": "^2.12",
+        "spatie/laravel-backup": "^10.2",
         "spatie/laravel-medialibrary": "^11.21",
         "spatie/laravel-settings": "^3.7"
     },

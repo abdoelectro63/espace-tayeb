@@ -3,6 +3,7 @@
 use App\Http\Controllers\CartController;
 use App\Http\Controllers\CatalogMediaController;
 use App\Http\Controllers\CheckoutController;
+use App\Http\Controllers\ContactController;
 use App\Http\Controllers\OrderInvoiceController;
 use App\Http\Controllers\PageController;
 use App\Http\Controllers\StoreController;
@@ -18,6 +19,8 @@ Route::get('/', [StoreController::class, 'index'])->name('store.home');
 Route::redirect('/privacy-policy', '/page/privacy-policy', 301)->name('store.privacy');
 
 Route::get('/page/{slug}', [PageController::class, 'show'])->name('page.show');
+
+Route::get('/contact', [ContactController::class, 'show'])->name('store.contact');
 
 Route::get('/cart', [CartController::class, 'index'])->name('store.cart');
 Route::get('/cart/drawer', [CartController::class, 'drawer'])->name('store.cart.drawer');

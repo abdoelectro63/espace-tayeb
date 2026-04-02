@@ -8,6 +8,7 @@
                 alt="{{ $product->name }}"
                 class="h-full w-full object-cover transition duration-300 group-hover:scale-[1.03]"
                 loading="lazy"
+                onerror="this.onerror=null;this.src='{{ asset('images/placeholder-product.svg') }}';"
             >
             @if($product->isOnSale())
                 <span class="absolute left-3 top-3 rounded-full bg-rose-600 px-2.5 py-1 text-xs font-semibold text-white shadow">

@@ -5,6 +5,7 @@ namespace App\Imports;
 use App\Models\Category;
 use App\Models\Product;
 use App\Support\ImageOptimizer;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Str;
 use Maatwebsite\Excel\Concerns\Importable;
 use Maatwebsite\Excel\Concerns\SkipsOnError;
@@ -31,7 +32,9 @@ class ProductImport implements SkipsOnError, SkipsOnFailure, ToModel, WithHeadin
      */
     public function model(array $row): ?Product
     {
-        $name = trim((string) ($row['name'] ?? ''));
+        // Template uses "name" as first column; spreadsheets with leading index columns often leave
+        // the first headers empty — Maatwebsite maps those to keys 0, 1, 2… so the title may be in $row[1].
+        $name = trim((string) (Arr::get($row, 'name') ?: Arr::get($row, 1) ?: Arr::get($row, '1')));
         if ($name === '') {
             return null;
         }
@@ -80,7 +83,7 @@ class ProductImport implements SkipsOnError, SkipsOnFailure, ToModel, WithHeadin
 
         $imageUrl = trim((string) ($row['image_url'] ?? ''));
         if ($imageUrl !== '') {
-            $optimizedPath = ImageOptimizer::processRemoteImageUrl($imageUrl, 'products/titles');
+            $optimizedPath = ImageOptimizer::processRemoteOrStoredPublicImage($imageUrl, 'products/titles');
             if ($optimizedPath !== null) {
                 $model->main_image = $optimizedPath;
             }
@@ -91,7 +94,7 @@ class ProductImport implements SkipsOnError, SkipsOnFailure, ToModel, WithHeadin
             $additionalPaths = collect(explode(',', $additionalImagesRaw))
                 ->map(fn (string $url): string => trim($url))
                 ->filter()
-                ->map(fn (string $url): ?string => ImageOptimizer::processRemoteImageUrl($url, 'products/gallery'))
+                ->map(fn (string $url): ?string => ImageOptimizer::processRemoteOrStoredPublicImage($url, 'products/gallery'))
                 ->filter()
                 ->values()
                 ->all();
@@ -119,7 +122,7 @@ class ProductImport implements SkipsOnError, SkipsOnFailure, ToModel, WithHeadin
             '*.old_price' => ['nullable', 'numeric', 'min:0'],
             '*.qty' => ['nullable', 'integer', 'min:0'],
             '*.category_id' => ['required'],
-            '*.image_url' => ['nullable', 'url'],
+            '*.image_url' => ['nullable', 'string', 'max:2048'],
             '*.additional_images' => ['nullable', 'string'],
         ];
     }
@@ -154,6 +157,22 @@ class ProductImport implements SkipsOnError, SkipsOnFailure, ToModel, WithHeadin
             if ($id > 0 && Category::query()->whereKey($id)->exists()) {
                 return $id;
             }
+
+            if ($id > 0) {
+                $name = "Imported Category {$id}";
+                $slugBase = Str::slug($name) ?: "imported-category-{$id}";
+                $slug = $slugBase;
+                $suffix = 2;
+                while (Category::query()->where('slug', $slug)->exists()) {
+                    $slug = "{$slugBase}-{$suffix}";
+                    $suffix++;
+                }
+
+                return (int) Category::query()->create([
+                    'name' => $name,
+                    'slug' => $slug,
+                ])->id;
+            }
         }
 
         $name = trim((string) $value);
@@ -161,8 +180,25 @@ class ProductImport implements SkipsOnError, SkipsOnFailure, ToModel, WithHeadin
             return null;
         }
 
-        return Category::query()
+        $existingId = Category::query()
             ->whereRaw('LOWER(name) = ?', [Str::lower($name)])
             ->value('id');
+
+        if ($existingId) {
+            return (int) $existingId;
+        }
+
+        $slugBase = Str::slug($name) ?: 'imported-category';
+        $slug = $slugBase;
+        $suffix = 2;
+        while (Category::query()->where('slug', $slug)->exists()) {
+            $slug = "{$slugBase}-{$suffix}";
+            $suffix++;
+        }
+
+        return (int) Category::query()->create([
+            'name' => $name,
+            'slug' => $slug,
+        ])->id;
     }
 }

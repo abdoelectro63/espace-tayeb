@@ -4,13 +4,14 @@ namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Database\Factories\UserFactory;
+use Filament\Panel;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
-#[Fillable(['name', 'email', 'password', 'role'])]
+#[Fillable(['name', 'email', 'password', 'role', 'is_admin'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
 {
@@ -33,10 +34,6 @@ class User extends Authenticatable
 
     public function canAccessPanel(Panel $panel): bool
     {
-        // إذا كنت تريد السماح للجميع بالدخول ولكن بصلاحيات مختلفة:
-        return true; 
-        
-        // أو إذا كنت تريد السماح فقط لمن لديهم بريد معين أو إيميل مفعل:
-         return str_ends_with($this->email, '@gmail.com');
+        return (bool) $this->is_admin;
     }
 }

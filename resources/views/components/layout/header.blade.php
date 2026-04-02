@@ -65,6 +65,7 @@
                     <a href="{{ route('store.home') }}#categories" class="transition opacity-95 hover:opacity-70">Kitchenware</a>
                     <a href="{{ route('store.home') }}#products" class="transition opacity-95 hover:opacity-70">Appliances</a>
                     <a href="{{ route('store.home') }}#products" class="transition opacity-95 hover:opacity-70">Homewares</a>
+                    <a href="{{ route('store.contact') }}" class="transition opacity-95 hover:opacity-70">اتصل بنا</a>
                 @endif
             </nav>
 
@@ -119,6 +120,7 @@
                 <a @click="mobileOpen = false" href="{{ route('store.home') }}#categories" class="block rounded-lg px-3 py-2 hover:bg-white/10">Kitchenware</a>
                 <a @click="mobileOpen = false" href="{{ route('store.home') }}#products" class="block rounded-lg px-3 py-2 hover:bg-white/10">Appliances</a>
                 <a @click="mobileOpen = false" href="{{ route('store.home') }}#products" class="block rounded-lg px-3 py-2 hover:bg-white/10">Homewares</a>
+                <a @click="mobileOpen = false" href="{{ route('store.contact') }}" class="block rounded-lg px-3 py-2 hover:bg-white/10">اتصل بنا</a>
             @endif
         </nav>
     </div>

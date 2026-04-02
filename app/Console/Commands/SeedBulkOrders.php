@@ -6,6 +6,7 @@ use App\Filament\Resources\Orders\Schemas\OrderForm;
 use App\Models\Order;
 use App\Models\OrderProduct;
 use App\Models\Product;
+use App\Models\ShippingCompanyCity;
 use App\Services\ShippingCalculator;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
@@ -47,16 +48,27 @@ class SeedBulkOrders extends Command
             $this->warn('Aucun produit actif : un produit démo a été créé.');
         }
 
-        $cities = [
-            ['Casablanca', 'casablanca'],
-            ['Rabat', 'other'],
-            ['Marrakech', 'other'],
-            ['Fès', 'other'],
-            ['Tanger', 'other'],
-            ['Agadir', 'other'],
-            ['Meknès', 'other'],
-            ['Oujda', 'other'],
-        ];
+        $cityPool = ShippingCompanyCity::query()
+            ->active()
+            ->pluck('name')
+            ->map(fn (string $n): string => trim($n))
+            ->filter()
+            ->unique()
+            ->values()
+            ->all();
+
+        if ($cityPool === []) {
+            $cityPool = [
+                'Casablanca',
+                'Rabat',
+                'Marrakech',
+                'Fès',
+                'Tanger',
+                'Agadir',
+                'Meknès',
+                'Oujda',
+            ];
+        }
 
         $batch = Str::upper(Str::random(6));
 
@@ -64,7 +76,8 @@ class SeedBulkOrders extends Command
         $bar->start();
 
         for ($i = 1; $i <= $count; $i++) {
-            [$city, $zone] = $cities[array_rand($cities)];
+            $city = $cityPool[array_rand($cityPool)];
+            $zone = preg_match('/casablanca/i', $city) === 1 ? 'casablanca' : 'other';
 
             $lineCount = random_int(1, min(2, $products->count()));
             $picked = $products->random($lineCount);

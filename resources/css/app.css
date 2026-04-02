@@ -40,4 +40,55 @@
     .store-footer .store-footer-divider {
         border-top-color: rgba(255, 255, 255, 0.1);
     }
+
+    /* Product detail: price badges (explicit colors — avoids missing Tailwind utilities in store build) */
+    .product-price-new {
+        display: inline-flex;
+        align-items: baseline;
+        gap: 0.375rem;
+        border-radius: 0.375rem;
+        background-color: #dc2626;
+        color: #ffffff;
+        padding: 0.375rem 0.75rem;
+        font-weight: 700;
+        box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+    }
+
+    .product-price-new--lg {
+        font-size: 1.875rem;
+        line-height: 2.25rem;
+    }
+
+    .product-price-new--md {
+        font-size: 1.5rem;
+        line-height: 2rem;
+    }
+
+    .product-price-new .product-price-currency {
+        color: rgba(255, 255, 255, 0.92);
+        font-weight: 600;
+    }
+
+    .product-price-new--lg .product-price-currency {
+        font-size: 1.125rem;
+        line-height: 1.75rem;
+    }
+
+    .product-price-new--md .product-price-currency {
+        font-size: 1rem;
+        line-height: 1.5rem;
+    }
+
+    .product-price-old {
+        display: inline-flex;
+        align-items: baseline;
+        border-radius: 0.375rem;
+        background-color: #000000;
+        color: #fde047;
+        padding: 0.25rem 0.625rem;
+        font-size: 1.25rem;
+        line-height: 1.75rem;
+        font-weight: 600;
+        text-decoration: line-through;
+    }
 }

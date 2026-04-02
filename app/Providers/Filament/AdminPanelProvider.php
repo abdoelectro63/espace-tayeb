@@ -14,10 +14,10 @@ use Filament\View\PanelsRenderHook;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
 use Illuminate\Cookie\Middleware\EncryptCookies;
 use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
-use Illuminate\Support\Facades\Route;
 use Illuminate\Routing\Middleware\SubstituteBindings;
-use Illuminate\Support\Facades\Blade;
 use Illuminate\Session\Middleware\StartSession;
+use Illuminate\Support\Facades\Blade;
+use Illuminate\Support\Facades\Route;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
 
 class AdminPanelProvider extends PanelProvider
@@ -29,6 +29,10 @@ class AdminPanelProvider extends PanelProvider
             ->id('admin')
             ->path('admin')
             ->login()
+            ->bootUsing(function (Panel $panel): void {
+                // Filament uses app locale for `dir` (ar => rtl). Force LTR for this panel.
+                app()->setLocale('en');
+            })
             ->colors([
                 'primary' => Color::Amber,
             ])

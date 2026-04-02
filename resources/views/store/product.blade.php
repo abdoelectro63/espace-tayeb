@@ -56,6 +56,7 @@
                         src="{{ $product->mainImageUrl() }}"
                         alt="{{ $product->name }}"
                         class="aspect-square w-full object-cover"
+                        onerror="this.onerror=null;this.src='{{ asset('images/placeholder-product.svg') }}';"
                     >
                 </div>
                 @php
@@ -65,7 +66,7 @@
                     <div class="grid grid-cols-4 gap-2 sm:gap-3">
                         @foreach($gallery as $url)
                             <button type="button" class="overflow-hidden rounded-lg border border-zinc-100 bg-zinc-50" onclick="document.querySelector('[data-main-product-img]').src='{{ $url }}'">
-                                <img src="{{ $url }}" alt="" class="aspect-square w-full object-cover" loading="lazy">
+                                <img src="{{ $url }}" alt="" class="aspect-square w-full object-cover" loading="lazy" onerror="this.onerror=null;this.src='{{ asset('images/placeholder-product.svg') }}';">
                             </button>
                         @endforeach
                     </div>
@@ -97,12 +98,15 @@
                         $listPrice = (float) $product->price;
                     @endphp
                     <div class="mt-6 flex flex-wrap items-baseline gap-3">
-                        <span class="text-3xl font-bold text-zinc-900">{{ number_format($payPrice, 2) }} <span class="text-lg font-semibold text-zinc-500">MAD</span></span>
+                        <span class="product-price-new product-price-new--lg">
+                            {{ number_format($payPrice, 2) }}
+                            <span class="product-price-currency">MAD</span>
+                        </span>
                         @if($effectivePrice > $payPrice + 0.001)
-                            <span class="text-xl text-zinc-400 line-through">{{ number_format($effectivePrice, 2) }}</span>
+                            <span class="product-price-old">{{ number_format($effectivePrice, 2) }}</span>
                         @endif
                         @if($listPrice > $effectivePrice + 0.001)
-                            <span class="text-xl text-zinc-400 line-through">{{ number_format($listPrice, 2) }}</span>
+                            <span class="product-price-old">{{ number_format($listPrice, 2) }}</span>
                         @endif
                     </div>
 
@@ -207,9 +211,9 @@
                                     </select>
                                 </div>
                                 <div class="flex flex-wrap items-baseline gap-3">
-                                    <span class="text-2xl font-bold text-zinc-900">
+                                    <span class="product-price-new product-price-new--md">
                                         <span x-text="linePrice.toFixed(2)"></span>
-                                        <span class="text-base font-semibold text-zinc-500">MAD</span>
+                                        <span class="product-price-currency">MAD</span>
                                     </span>
                                 </div>
                             </div>
@@ -280,6 +284,7 @@
                                             class="h-full w-full object-cover"
                                             loading="lazy"
                                             decoding="async"
+                                            onerror="this.onerror=null;this.src='{{ asset('images/placeholder-product.svg') }}';"
                                         >
                                     </div>
                                     <span class="max-w-[8.5rem] text-center text-xs font-medium text-zinc-600 line-clamp-2">{{ $product->name }}</span>
@@ -305,6 +310,7 @@
                                                 class="h-full w-full object-cover"
                                                 loading="lazy"
                                                 decoding="async"
+                                                onerror="this.onerror=null;this.src='{{ asset('images/placeholder-product.svg') }}';"
                                             >
                                         </div>
                                     </div>
@@ -371,8 +377,9 @@
         </div>
 
         @if($relatedProducts->isNotEmpty())
-            <section class="mt-20 border-t border-zinc-200 pt-14">
-                <h2 class="text-xl font-bold text-zinc-900">قد يعجبك أيضاً</h2>
+            <section id="related-products" class="mt-20 scroll-mt-8 border-t border-zinc-200 pt-14" aria-labelledby="related-products-heading">
+                <h2 id="related-products-heading" class="text-xl font-bold text-zinc-900">منتجات ذات صلة</h2>
+                <p class="mt-1 text-sm text-zinc-500">من نفس التصنيف أو اقتراحات أخرى</p>
                 <div class="mt-8 grid grid-cols-2 gap-3 sm:gap-6 lg:grid-cols-4">
                     @foreach($relatedProducts as $p)
                         <x-store.product-card :product="$p" />

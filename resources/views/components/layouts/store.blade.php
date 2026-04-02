@@ -113,6 +113,7 @@
                             <li><a href="{{ route('store.home') }}#products" class="underline-offset-4 hover:underline">المنتجات</a></li>
                             <li><a href="{{ route('store.cart') }}" class="underline-offset-4 hover:underline">سلة التسوق</a></li>
                             <li><a href="{{ route('store.checkout') }}" class="underline-offset-4 hover:underline">إتمام الشراء</a></li>
+                            <li><a href="{{ route('store.contact') }}" class="underline-offset-4 hover:underline">اتصل بنا</a></li>
                             <li><a href="{{ route('page.show', ['slug' => 'privacy-policy']) }}" class="underline-offset-4 hover:underline">سياسة الخصوصية</a></li>
                         </ul>
                     </div>
