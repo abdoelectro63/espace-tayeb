@@ -29,7 +29,7 @@ return new class extends Migration
             $table->foreignId('shipping_company_city_id')->nullable()->constrained('shipping_company_cities')->nullOnDelete();
             $table->timestamps();
 
-            $table->unique(['order_id', 'shipping_company_id']);
+            $table->unique(['order_id', 'shipping_company_id'], 'occs_order_carrier_uidx');
         });
     }
 
