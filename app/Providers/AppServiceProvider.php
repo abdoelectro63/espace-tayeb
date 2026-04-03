@@ -100,7 +100,16 @@ class AppServiceProvider extends ServiceProvider
                 URL::forceScheme('https');
             }
 
-            $appUrl = ($isSecureRequest ? 'https://' : 'http://').$host;
+            // PaaS (e.g. Laravel Cloud) may not mark the request secure; Filament/Filepond still need
+            // https URLs for /storage previews on an https page — avoid mixed-content / broken image loads.
+            $isLocalHost = str_contains($host, 'localhost')
+                || str_contains($host, '127.0.0.1')
+                || str_ends_with($host, '.test')
+                || str_ends_with($host, '.local');
+            $useHttps = $isSecureRequest
+                || (app()->environment('production') && ! $isLocalHost);
+
+            $appUrl = ($useHttps ? 'https://' : 'http://').$host;
             config([
                 'app.url' => $appUrl,
                 'app.asset_url' => $appUrl,
