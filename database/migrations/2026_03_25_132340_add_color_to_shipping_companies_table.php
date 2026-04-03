@@ -12,11 +12,12 @@ return new class extends Migration
     public function up()
     {
         Schema::table('shipping_companies', function (Blueprint $table) {
-            if (!Schema::hasColumn('shipping_companies', 'color')) {
+            if (! Schema::hasColumn('shipping_companies', 'color')) {
                 $table->string('color')->default('info');
             }
         });
     }
+
     /**
      * Reverse the migrations.
      */

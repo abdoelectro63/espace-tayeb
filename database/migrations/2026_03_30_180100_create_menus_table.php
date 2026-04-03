@@ -8,12 +8,14 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::create('menus', function (Blueprint $table) {
-            $table->id();
-            $table->string('name');
-            $table->string('location')->nullable()->unique();
-            $table->timestamps();
-        });
+        if (! Schema::hasTable('menus')) {
+            Schema::create('menus', function (Blueprint $table) {
+                $table->id();
+                $table->string('name');
+                $table->string('location')->nullable()->unique();
+                $table->timestamps();
+            });
+        }
     }
 
     public function down(): void

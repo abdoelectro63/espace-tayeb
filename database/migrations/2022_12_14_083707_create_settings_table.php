@@ -8,17 +8,21 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::create(config('settings.repositories.database.table') ?? 'settings', function (Blueprint $table): void {
-            $table->id();
+        $tableName = config('settings.repositories.database.table') ?? 'settings';
 
-            $table->string('group');
-            $table->string('name');
-            $table->boolean('locked')->default(false);
-            $table->json('payload');
+        if (! Schema::hasTable($tableName)) {
+            Schema::create($tableName, function (Blueprint $table): void {
+                $table->id();
 
-            $table->timestamps();
+                $table->string('group');
+                $table->string('name');
+                $table->boolean('locked')->default(false);
+                $table->json('payload');
 
-            $table->unique(['group', 'name']);
-        });
+                $table->timestamps();
+
+                $table->unique(['group', 'name']);
+            });
+        }
     }
 };

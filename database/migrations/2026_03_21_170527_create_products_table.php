@@ -11,17 +11,19 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('products', function (Blueprint $table) {
-            $table->id();
-            $table->string('name'); // اسم المنتج (مثلاً: مقلاة هوائية 5 لتر)
-            $table->text('description')->nullable(); // الوصف
-            $table->decimal('price', 10, 2); // الثمن الأصلي
-            $table->decimal('discount_price', 10, 2)->nullable(); // الثمن بعد التخفيض
-           // $table->json('images')->nullable()->after('description');
-           $table->json('images')->nullable();
-            $table->boolean('is_active')->default(true); // هل المنتج معروض أم مخفي
-            $table->timestamps();
-        });
+        if (! Schema::hasTable('products')) {
+            Schema::create('products', function (Blueprint $table) {
+                $table->id();
+                $table->string('name'); // اسم المنتج (مثلاً: مقلاة هوائية 5 لتر)
+                $table->text('description')->nullable(); // الوصف
+                $table->decimal('price', 10, 2); // الثمن الأصلي
+                $table->decimal('discount_price', 10, 2)->nullable(); // الثمن بعد التخفيض
+                // $table->json('images')->nullable()->after('description');
+                $table->json('images')->nullable();
+                $table->boolean('is_active')->default(true); // هل المنتج معروض أم مخفي
+                $table->timestamps();
+            });
+        }
     }
 
     /**

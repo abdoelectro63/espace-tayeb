@@ -11,14 +11,17 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('categories', function (Blueprint $table) {
-            $table->id();
-            $table->string('name'); // اسم التصنيف (مثلاً: مقالي هوائية)
-            $table->string('slug')->unique(); // للروابط (مثلاً: air-fryers)
-            $table->timestamps();
-            $table->foreignId('category_id')->nullable()->constrained()->onDelete('set null');
-        });
+        if (! Schema::hasTable('categories')) {
+            Schema::create('categories', function (Blueprint $table) {
+                $table->id();
+                $table->string('name'); // اسم التصنيف (مثلاً: مقالي هوائية)
+                $table->string('slug')->unique(); // للروابط (مثلاً: air-fryers)
+                $table->timestamps();
+                $table->foreignId('category_id')->nullable()->constrained()->onDelete('set null');
+            });
+        }
     }
+
     /**
      * Reverse the migrations.
      */

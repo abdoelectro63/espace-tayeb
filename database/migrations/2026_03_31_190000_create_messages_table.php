@@ -8,14 +8,16 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::create('messages', function (Blueprint $table): void {
-            $table->id();
-            $table->foreignId('sender_id')->constrained('users')->cascadeOnDelete();
-            $table->foreignId('receiver_id')->constrained('users')->cascadeOnDelete();
-            $table->text('message');
-            $table->foreignId('order_id')->nullable()->constrained('orders')->nullOnDelete();
-            $table->timestamps();
-        });
+        if (! Schema::hasTable('messages')) {
+            Schema::create('messages', function (Blueprint $table): void {
+                $table->id();
+                $table->foreignId('sender_id')->constrained('users')->cascadeOnDelete();
+                $table->foreignId('receiver_id')->constrained('users')->cascadeOnDelete();
+                $table->text('message');
+                $table->foreignId('order_id')->nullable()->constrained('orders')->nullOnDelete();
+                $table->timestamps();
+            });
+        }
     }
 
     public function down(): void

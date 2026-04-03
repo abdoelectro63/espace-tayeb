@@ -11,12 +11,14 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('shipping_companies', function (Blueprint $table) {
-            $table->id();
-            $table->string('name')->unique();
-            $table->string('color')->default('info');
-            $table->timestamps();
-        });
+        if (! Schema::hasTable('shipping_companies')) {
+            Schema::create('shipping_companies', function (Blueprint $table) {
+                $table->id();
+                $table->string('name')->unique();
+                $table->string('color')->default('info');
+                $table->timestamps();
+            });
+        }
     }
 
     /**

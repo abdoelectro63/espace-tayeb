@@ -19,23 +19,27 @@ return new class extends Migration
 
     public function down(): void
     {
-        Schema::create('shipping_cities', function (Blueprint $table) {
-            $table->id();
-            $table->string('name');
-            $table->string('slug')->unique();
-            $table->string('vitips_label')->nullable();
-            $table->string('express_city_code', 32)->nullable();
-            $table->unsignedSmallInteger('sort_order')->default(0);
-            $table->boolean('is_active')->default(true);
-            $table->timestamps();
-        });
+        if (! Schema::hasTable('shipping_cities')) {
+            Schema::create('shipping_cities', function (Blueprint $table) {
+                $table->id();
+                $table->string('name');
+                $table->string('slug')->unique();
+                $table->string('vitips_label')->nullable();
+                $table->string('express_city_code', 32)->nullable();
+                $table->unsignedSmallInteger('sort_order')->default(0);
+                $table->boolean('is_active')->default(true);
+                $table->timestamps();
+            });
+        }
 
-        Schema::table('orders', function (Blueprint $table) {
-            $table->foreignId('shipping_city_id')
-                ->nullable()
-                ->after('city')
-                ->constrained('shipping_cities')
-                ->nullOnDelete();
-        });
+        if (Schema::hasTable('orders') && ! Schema::hasColumn('orders', 'shipping_city_id')) {
+            Schema::table('orders', function (Blueprint $table) {
+                $table->foreignId('shipping_city_id')
+                    ->nullable()
+                    ->after('city')
+                    ->constrained('shipping_cities')
+                    ->nullOnDelete();
+            });
+        }
     }
 };
