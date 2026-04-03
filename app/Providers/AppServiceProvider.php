@@ -100,22 +100,40 @@ class AppServiceProvider extends ServiceProvider
                 URL::forceScheme('https');
             }
 
-            // PaaS (e.g. Laravel Cloud) may not mark the request secure; Filament/Filepond still need
-            // https URLs for /storage previews on an https page — avoid mixed-content / broken image loads.
-            $isLocalHost = str_contains($host, 'localhost')
+            $isLocalRequestHost = str_contains($host, 'localhost')
                 || str_contains($host, '127.0.0.1')
                 || str_ends_with($host, '.test')
                 || str_ends_with($host, '.local');
-            $useHttps = $isSecureRequest
-                || (app()->environment('production') && ! $isLocalHost);
 
-            $appUrl = ($useHttps ? 'https://' : 'http://').$host;
+            $useHttps = $isSecureRequest
+                || (app()->environment('production') && ! $isLocalRequestHost);
+
+            $dynamicRoot = rtrim(($useHttps ? 'https://' : 'http://').$host, '/');
+
+            // Prefer APP_URL when it is a real public base URL. Overriding from the request host can
+            // break Laravel Cloud (internal/wrong Host) and break Storage::url() vs the canonical domain.
+            $configuredRoot = rtrim((string) config('app.url'), '/');
+            $configuredHost = parse_url($configuredRoot, PHP_URL_HOST);
+            $usePlaceholderAppUrl = $configuredRoot === ''
+                || $configuredHost === 'localhost'
+                || $configuredHost === '127.0.0.1'
+                || ($configuredHost !== null && str_ends_with($configuredHost, '.test'));
+
+            if ($usePlaceholderAppUrl) {
+                $root = $dynamicRoot;
+            } else {
+                $root = $configuredRoot;
+                if (app()->environment('production') && str_starts_with($root, 'http://')) {
+                    $root = preg_replace('#^http://#', 'https://', $root, 1);
+                }
+            }
+
             config([
-                'app.url' => $appUrl,
-                'app.asset_url' => $appUrl,
-                'filesystems.disks.public.url' => rtrim($appUrl, '/').'/storage',
+                'app.url' => $root,
+                'app.asset_url' => $root,
+                'filesystems.disks.public.url' => $root.'/storage',
             ]);
-            URL::forceRootUrl(config('app.url'));
+            URL::forceRootUrl($root);
         }
 
         Paginator::defaultView('pagination::tailwind');
