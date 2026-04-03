@@ -6,47 +6,33 @@ use App\Models\Menu;
 use App\Models\MenuItem;
 use Illuminate\Database\Seeder;
 
-class MenuSeeder extends Seeder
+class MenuSeeders extends Seeder
 {
     /**
      * Run the database seeds.
      */
     public function run(): void
     {
-        // 1. Create the Menus (Locations)
-        $footer1 = Menu::create([
-            'id' => 1,
-            'name' => 'التصنيفات',
-            'location' => 'footer_1',
-            'created_at' => '2026-04-01 17:53:51',
-            'updated_at' => '2026-04-01 17:53:51',
-        ]);
+        $footer1 = Menu::updateOrCreate(
+            ['location' => 'footer_1'],
+            ['name' => 'التصنيفات']
+        );
 
-        $topMenu = Menu::create([
-            'id' => 2,
-            'name' => 'top menu',
-            'location' => 'top_menu',
-            'created_at' => '2026-04-01 17:58:17',
-            'updated_at' => '2026-04-01 17:58:17',
-        ]);
+        $topMenu = Menu::updateOrCreate(
+            ['location' => 'top_menu'],
+            ['name' => 'top menu']
+        );
 
-        $footer3 = Menu::create([
-            'id' => 3,
-            'name' => 'السياسات',
-            'location' => 'footer_3',
-            'created_at' => '2026-04-01 18:22:50',
-            'updated_at' => '2026-04-02 15:21:08',
-        ]);
+        $footer3 = Menu::updateOrCreate(
+            ['location' => 'footer_3'],
+            ['name' => 'السياسات']
+        );
 
-        $footer2 = Menu::create([
-            'id' => 4,
-            'name' => 'التصنيفات 2',
-            'location' => 'footer_2',
-            'created_at' => '2026-04-02 13:33:23',
-            'updated_at' => '2026-04-02 13:34:03',
-        ]);
+        $footer2 = Menu::updateOrCreate(
+            ['location' => 'footer_2'],
+            ['name' => 'التصنيفات 2']
+        );
 
-        // 2. Create Menu Items for Footer 1 (Categories)
         $footer1Items = [
             ['label' => 'ادوات المطبخ', 'order' => 1, 'linkable_type' => 'App\Models\Category', 'linkable_id' => 3],
             ['label' => 'الاجهزة المنزلية', 'order' => 2, 'linkable_type' => 'App\Models\Category', 'linkable_id' => 4],
@@ -55,10 +41,12 @@ class MenuSeeder extends Seeder
         ];
 
         foreach ($footer1Items as $item) {
-            MenuItem::create(array_merge($item, ['menu_id' => $footer1->id]));
+            MenuItem::updateOrCreate(
+                ['menu_id' => $footer1->id, 'order' => $item['order']],
+                array_merge($item, ['menu_id' => $footer1->id])
+            );
         }
 
-        // 3. Create Menu Items for Top Menu
         $topMenuItems = [
             ['label' => 'اواني المطبخ', 'order' => 1, 'linkable_type' => 'App\Models\Category', 'linkable_id' => 3],
             ['label' => 'الاجهزة المنزلية', 'order' => 2, 'linkable_type' => 'App\Models\Category', 'linkable_id' => 4],
@@ -67,20 +55,24 @@ class MenuSeeder extends Seeder
         ];
 
         foreach ($topMenuItems as $item) {
-            MenuItem::create(array_merge($item, ['menu_id' => $topMenu->id]));
+            MenuItem::updateOrCreate(
+                ['menu_id' => $topMenu->id, 'order' => $item['order']],
+                array_merge($item, ['menu_id' => $topMenu->id])
+            );
         }
 
-        // 4. Create Menu Items for Footer 3 (Policies/Pages)
         $footer3Items = [
             ['label' => 'سياسة الإرجاع والاسترداد والتبادل', 'order' => 1, 'linkable_type' => 'App\Models\Page', 'linkable_id' => 2],
             ['label' => 'سياسة الخصوصية وحماية البيانات الشخصية', 'order' => 2, 'linkable_type' => 'App\Models\Page', 'linkable_id' => 1],
         ];
 
         foreach ($footer3Items as $item) {
-            MenuItem::create(array_merge($item, ['menu_id' => $footer3->id]));
+            MenuItem::updateOrCreate(
+                ['menu_id' => $footer3->id, 'order' => $item['order']],
+                array_merge($item, ['menu_id' => $footer3->id])
+            );
         }
 
-        // 5. Create Menu Items for Footer 2 (Sub-Categories)
         $footer2Items = [
             ['label' => 'أواني الشرب', 'order' => 1, 'linkable_type' => 'App\Models\Category', 'linkable_id' => 7],
             ['label' => 'الة القهوة', 'order' => 2, 'linkable_type' => 'App\Models\Category', 'linkable_id' => 8],
@@ -88,7 +80,10 @@ class MenuSeeder extends Seeder
         ];
 
         foreach ($footer2Items as $item) {
-            MenuItem::create(array_merge($item, ['menu_id' => $footer2->id]));
+            MenuItem::updateOrCreate(
+                ['menu_id' => $footer2->id, 'order' => $item['order']],
+                array_merge($item, ['menu_id' => $footer2->id])
+            );
         }
     }
 }

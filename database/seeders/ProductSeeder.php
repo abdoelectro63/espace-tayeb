@@ -12,8 +12,15 @@ class ProductSeeder extends Seeder
      */
     public function run(): void
     {
-        // Disable foreign key checks to allow truncating and re-inserting
-        DB::statement('SET FOREIGN_KEY_CHECKS=0;');
+        $driver = DB::connection()->getDriverName();
+
+        // Disable foreign key checks to allow truncating and re-inserting (MySQL vs SQLite)
+        if (in_array($driver, ['mysql', 'mariadb'], true)) {
+            DB::statement('SET FOREIGN_KEY_CHECKS=0;');
+        } elseif ($driver === 'sqlite') {
+            DB::statement('PRAGMA foreign_keys = OFF;');
+        }
+
         DB::table('products')->truncate();
 
         $products = [
@@ -339,6 +346,10 @@ class ProductSeeder extends Seeder
             DB::table('products')->updateOrInsert(['id' => $product['id']], $product);
         }
 
-        DB::statement('SET FOREIGN_KEY_CHECKS=1;');
+        if (in_array($driver, ['mysql', 'mariadb'], true)) {
+            DB::statement('SET FOREIGN_KEY_CHECKS=1;');
+        } elseif ($driver === 'sqlite') {
+            DB::statement('PRAGMA foreign_keys = ON;');
+        }
     }
 }
