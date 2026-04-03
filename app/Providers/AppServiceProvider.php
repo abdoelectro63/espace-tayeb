@@ -113,11 +113,18 @@ class AppServiceProvider extends ServiceProvider
             // (e.g. APP_URL is a custom domain but you open *.free.laravel.cloud), upload-file fails.
             $root = rtrim(($useHttps ? 'https://' : 'http://').$host, '/');
 
-            config([
+            $configUpdates = [
                 'app.url' => $root,
                 'app.asset_url' => $root,
-                'filesystems.disks.public.url' => $root.'/storage',
-            ]);
+            ];
+
+            // Only rewrite public disk URL for local storage. Cloudflare R2 / S3 public disk uses
+            // AWS_URL (or a custom domain); forcing $root.'/storage' breaks image URLs and previews.
+            if ((config('filesystems.disks.public.driver') ?? 'local') === 'local') {
+                $configUpdates['filesystems.disks.public.url'] = $root.'/storage';
+            }
+
+            config($configUpdates);
             URL::forceRootUrl($root);
         }
 
