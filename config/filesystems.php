@@ -58,6 +58,9 @@ return [
             'use_path_style_endpoint' => env('AWS_USE_PATH_STYLE_ENDPOINT', false),
             'throw' => false,
             'report' => false,
+            // ADD THESE TWO LINES BELOW:
+            'version' => 'latest',
+            'container_mode' => true, 
         ],
 
     ],
