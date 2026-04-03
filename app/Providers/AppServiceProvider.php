@@ -108,25 +108,10 @@ class AppServiceProvider extends ServiceProvider
             $useHttps = $isSecureRequest
                 || (app()->environment('production') && ! $isLocalRequestHost);
 
-            $dynamicRoot = rtrim(($useHttps ? 'https://' : 'http://').$host, '/');
-
-            // Prefer APP_URL when it is a real public base URL. Overriding from the request host can
-            // break Laravel Cloud (internal/wrong Host) and break Storage::url() vs the canonical domain.
-            $configuredRoot = rtrim((string) config('app.url'), '/');
-            $configuredHost = parse_url($configuredRoot, PHP_URL_HOST);
-            $usePlaceholderAppUrl = $configuredRoot === ''
-                || $configuredHost === 'localhost'
-                || $configuredHost === '127.0.0.1'
-                || ($configuredHost !== null && str_ends_with($configuredHost, '.test'));
-
-            if ($usePlaceholderAppUrl) {
-                $root = $dynamicRoot;
-            } else {
-                $root = $configuredRoot;
-                if (app()->environment('production') && str_starts_with($root, 'http://')) {
-                    $root = preg_replace('#^http://#', 'https://', $root, 1);
-                }
-            }
+            // Always derive the public root from this request's host. Livewire file uploads use
+            // signed URLs; if app.url / forceRootUrl point at a different host than the browser
+            // (e.g. APP_URL is a custom domain but you open *.free.laravel.cloud), upload-file fails.
+            $root = rtrim(($useHttps ? 'https://' : 'http://').$host, '/');
 
             config([
                 'app.url' => $root,
