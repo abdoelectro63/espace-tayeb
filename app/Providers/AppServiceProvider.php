@@ -79,6 +79,10 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        if (config('app.env') === 'production') {
+            URL::forceScheme('https');
+        }
+
         Page::observe(PageObserver::class);
         Menu::observe(MenuObserver::class);
         MenuItem::observe(MenuItemObserver::class);
