@@ -20,7 +20,11 @@ return new class extends Migration
         if (! Schema::hasTable('shipping_invoice_import_lines')) {
             Schema::create('shipping_invoice_import_lines', function (Blueprint $table) {
                 $table->id();
-                $table->foreignId('shipping_invoice_import_id')->constrained()->cascadeOnDelete();
+                $table->unsignedBigInteger('shipping_invoice_import_id');
+                $table->foreign('shipping_invoice_import_id', 'siil_import_id_fk')
+                    ->references('id')
+                    ->on('shipping_invoice_imports')
+                    ->cascadeOnDelete();
                 $table->string('carrier', 32);
                 $table->string('tracking_key', 191);
                 $table->foreignId('order_id')->nullable()->constrained()->nullOnDelete();
@@ -33,7 +37,11 @@ return new class extends Migration
                 $table->timestamp('collected_at')->nullable();
                 $table->timestamps();
 
-                $table->index(['shipping_invoice_import_id', 'carrier']);
+                $table->index(['shipping_invoice_import_id', 'carrier'], 'siil_import_carrier_idx');
+            });
+        } elseif (! Schema::hasIndex('shipping_invoice_import_lines', 'siil_import_carrier_idx')) {
+            Schema::table('shipping_invoice_import_lines', function (Blueprint $table) {
+                $table->index(['shipping_invoice_import_id', 'carrier'], 'siil_import_carrier_idx');
             });
         }
     }
