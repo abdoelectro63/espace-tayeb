@@ -14,7 +14,8 @@ use Illuminate\Validation\Rule;
 class OrderController extends Controller
 {
     /**
-     * List orders as JSON. Scoped like Filament: staff roles see all (or filtered); delivery drivers only their assignments.
+     * List orders as JSON. Delivery drivers: same scope as Filament {@see DeliveryResource} — only orders assigned to them
+     * and only statuses shown on the delivery board (excludes e.g. pending). Staff see all orders.
      */
     public function index(Request $request): JsonResponse
     {
@@ -47,14 +48,25 @@ class OrderController extends Controller
             return response()->json(['message' => 'Forbidden.'], 403);
         }
 
-        if ($order->status === 'delivered') {
+        if ($user->role === 'delivery_man' && ! in_array($order->status, Order::DELIVERY_PANEL_STATUSES, true)) {
+            return response()->json(['message' => 'Forbidden.'], 403);
+        }
+
+        if ($order->status === 'delivered' && $this->isDeliveredAndPaid($order)) {
+            return response()->json([
+                'message' => 'Delivered and paid orders cannot be modified.',
+            ], 403);
+        }
+
+        if ($order->status === 'delivered' && $user->role !== 'delivery_man') {
             return response()->json([
                 'message' => 'Delivered orders cannot be modified.',
             ], 403);
         }
 
+        $allowedStatuses = $this->allowedNewStatusesForUser($user);
         $validated = $request->validate([
-            'status' => ['required', 'string', Rule::in(Order::STATUSES)],
+            'status' => ['required', 'string', Rule::in($allowedStatuses)],
         ]);
 
         $order->update(['status' => $validated['status']]);
@@ -86,7 +98,9 @@ class OrderController extends Controller
             ->orderByDesc('created_at');
 
         if ($user->role === 'delivery_man') {
-            $query->where('delivery_man_id', $user->id);
+            $query
+                ->where('delivery_man_id', $user->id)
+                ->whereIn('status', Order::DELIVERY_PANEL_STATUSES);
         }
 
         return $query;
@@ -103,5 +117,22 @@ class OrderController extends Controller
         }
 
         return false;
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function allowedNewStatusesForUser(User $user): array
+    {
+        if ($user->role === 'delivery_man') {
+            return Order::DELIVERY_MAN_ALLOWED_TRANSITION_STATUSES;
+        }
+
+        return Order::STATUSES;
+    }
+
+    private function isDeliveredAndPaid(Order $order): bool
+    {
+        return $order->status === 'delivered' && $order->payment_status === 'paid';
     }
 }

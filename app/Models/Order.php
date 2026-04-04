@@ -5,11 +5,11 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Database\Eloquent\SoftDeletes; // أضف هذا
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Order extends Model
 {
-    use SoftDeletes; // أضف هذا السطر داخل الكلاس
+    use SoftDeletes;
 
     /**
      * English slugs stored in `orders.status` (align mobile `statusToApiPayload` with these).
@@ -23,6 +23,34 @@ class Order extends Model
         'cancelled',
         'shipped',
         'delivered',
+        'refuse',
+        'reporter',
+    ];
+
+    /**
+     * Same status filter as the Filament delivery panel (DeliveryResource list).
+     *
+     * @var list<string>
+     */
+    public const DELIVERY_PANEL_STATUSES = [
+        'confirmed',
+        'shipped',
+        'delivered',
+        'no_response',
+        'cancelled',
+        'refuse',
+        'reporter',
+    ];
+
+    /**
+     * Status options the delivery_man may choose in Filament DeliveriesTable (EditAction "Changer le statut").
+     *
+     * @var list<string>
+     */
+    public const DELIVERY_MAN_ALLOWED_TRANSITION_STATUSES = [
+        'delivered',
+        'cancelled',
+        'no_response',
         'refuse',
         'reporter',
     ];
