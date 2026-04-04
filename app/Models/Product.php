@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\PublicDiskFileCleanup;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -67,6 +68,31 @@ class Product extends Model
 
             if ($product->upsell_id !== null && (int) $product->upsell_id === (int) $product->id) {
                 $product->upsell_id = null;
+            }
+        });
+
+        static::updating(function (self $product): void {
+            if ($product->isDirty('main_image')) {
+                $old = $product->getOriginal('main_image');
+                $new = $product->main_image;
+                if (is_string($old) && $old !== '' && $old !== $new) {
+                    PublicDiskFileCleanup::deletePathIfDeletable($old);
+                }
+            }
+
+            if ($product->isDirty('images')) {
+                $oldList = PublicDiskFileCleanup::normalizeToPathList($product->getOriginal('images'));
+                $newList = PublicDiskFileCleanup::normalizeToPathList($product->images);
+                foreach (array_diff($oldList, $newList) as $removed) {
+                    PublicDiskFileCleanup::deletePathIfDeletable($removed);
+                }
+            }
+        });
+
+        static::deleting(function (self $product): void {
+            PublicDiskFileCleanup::deletePathIfDeletable($product->main_image);
+            foreach (PublicDiskFileCleanup::normalizeToPathList($product->images) as $path) {
+                PublicDiskFileCleanup::deletePathIfDeletable($path);
             }
         });
     }

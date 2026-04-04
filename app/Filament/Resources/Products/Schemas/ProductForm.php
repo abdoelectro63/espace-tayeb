@@ -4,6 +4,7 @@ namespace App\Filament\Resources\Products\Schemas;
 
 use App\Models\Product;
 use App\Support\ImageOptimizer;
+use App\Support\PublicDiskFileCleanup;
 use Filament\Forms;
 use Filament\Forms\Components\BaseFileUpload;
 use Filament\Schemas\Components\Section;
@@ -206,6 +207,7 @@ class ProductForm
                             ->saveUploadedFileUsing(function (BaseFileUpload $component, TemporaryUploadedFile $file): ?string {
                                 return ImageOptimizer::processAndStore($file, 'products/gallery', 'images');
                             })
+                            ->deleteUploadedFileUsing(PublicDiskFileCleanup::filamentDeleteUploadedFile())
                             ->helperText('نفس المعالجة: WebP، عرض أقصى 1000px، جودة 80%.')
                             ->columnSpanFull(),
                     ]),

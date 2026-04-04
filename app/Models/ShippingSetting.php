@@ -2,11 +2,33 @@
 
 namespace App\Models;
 
+use App\Support\PublicDiskFileCleanup;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Storage;
 
 class ShippingSetting extends Model
 {
+    protected static function booted(): void
+    {
+        static::updating(function (self $row): void {
+            if ($row->isDirty('logo_path')) {
+                $old = $row->getOriginal('logo_path');
+                $new = $row->logo_path;
+                if (is_string($old) && $old !== '' && $old !== $new) {
+                    PublicDiskFileCleanup::deletePathIfDeletable($old);
+                }
+            }
+
+            if ($row->isDirty('hero_banner_path')) {
+                $old = $row->getOriginal('hero_banner_path');
+                $new = $row->hero_banner_path;
+                if (is_string($old) && $old !== '' && $old !== $new) {
+                    PublicDiskFileCleanup::deletePathIfDeletable($old);
+                }
+            }
+        });
+    }
+
     protected $fillable = [
         'casablanca_fee',
         'other_cities_fee',

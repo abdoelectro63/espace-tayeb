@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\PublicDiskFileCleanup;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -12,6 +13,23 @@ use InvalidArgumentException;
 class Category extends Model
 {
     protected $fillable = ['name', 'slug', 'category_id', 'image', 'icon'];
+
+    protected static function booted(): void
+    {
+        static::updating(function (self $category): void {
+            if ($category->isDirty('image')) {
+                $old = $category->getOriginal('image');
+                $new = $category->image;
+                if (is_string($old) && $old !== '' && $old !== $new) {
+                    PublicDiskFileCleanup::deletePathIfDeletable($old);
+                }
+            }
+        });
+
+        static::deleting(function (self $category): void {
+            PublicDiskFileCleanup::deletePathIfDeletable($category->image);
+        });
+    }
 
     public function products(): HasMany
     {

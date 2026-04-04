@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Pages\Schemas;
 
+use App\Support\PublicDiskFileCleanup;
 use Filament\Forms\Components\Builder;
 use Filament\Forms\Components\Builder\Block;
 use Filament\Forms\Components\FileUpload;
@@ -54,7 +55,8 @@ class PageForm
                                             ->image()
                                             ->disk('public')
                                             ->directory('pages/sections/hero')
-                                            ->imageEditor(),
+                                            ->imageEditor()
+                                            ->deleteUploadedFileUsing(PublicDiskFileCleanup::filamentDeleteUploadedFile()),
                                         TextInput::make('cta_label'),
                                         TextInput::make('cta_url')->url(),
                                     ]),
@@ -72,6 +74,7 @@ class PageForm
                                             ->disk('public')
                                             ->directory('pages/sections/images')
                                             ->imageEditor()
+                                            ->deleteUploadedFileUsing(PublicDiskFileCleanup::filamentDeleteUploadedFile())
                                             ->required(),
                                         TextInput::make('alt')->label('Alt text'),
                                         TextInput::make('caption'),
@@ -85,6 +88,7 @@ class PageForm
                                                     ->image()
                                                     ->disk('public')
                                                     ->directory('pages/sections/gallery')
+                                                    ->deleteUploadedFileUsing(PublicDiskFileCleanup::filamentDeleteUploadedFile())
                                                     ->required(),
                                                 TextInput::make('caption'),
                                             ])
