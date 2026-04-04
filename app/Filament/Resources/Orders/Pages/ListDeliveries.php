@@ -69,20 +69,30 @@ class ListDeliveries extends ListRecords
         });
 
         if (auth()->user()?->role === 'delivery_man') {
+            $driverActive = fn (Builder $query): Builder => $unpaidScope($query
+                ->whereIn('status', Order::DELIVERY_PANEL_STATUSES));
+
             return [
                 'my_orders' => Tab::make('My Orders')
-                    ->badge((clone $baseQuery)
-                        ->whereIn('status', Order::DELIVERY_PANEL_STATUSES)
-                        ->count())
-                    ->modifyQueryUsing(fn (Builder $query): Builder => $query
-                        ->whereIn('status', Order::DELIVERY_PANEL_STATUSES)
+                    ->badge($driverActive(clone $baseQuery)->count())
+                    ->modifyQueryUsing(fn (Builder $query): Builder => $driverActive($query)
                         ->latest('created_at')),
                 'completed' => Tab::make('Completed')
                     ->badge((clone $baseQuery)
-                        ->where('status', 'completed')
+                        ->where(function (Builder $q): void {
+                            $q->where('status', 'completed')
+                                ->orWhere(function (Builder $inner): void {
+                                    $inner->where('status', 'delivered')->where('payment_status', 'paid');
+                                });
+                        })
                         ->count())
                     ->modifyQueryUsing(fn (Builder $query): Builder => $query
-                        ->where('status', 'completed')
+                        ->where(function (Builder $q): void {
+                            $q->where('status', 'completed')
+                                ->orWhere(function (Builder $inner): void {
+                                    $inner->where('status', 'delivered')->where('payment_status', 'paid');
+                                });
+                        })
                         ->latest('created_at')),
             ];
         }

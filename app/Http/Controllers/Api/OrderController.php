@@ -16,8 +16,11 @@ class OrderController extends Controller
     /**
      * List orders as JSON.
      *
-     * Delivery drivers: use ?scope=active (default) for assigned, in-progress board orders, or ?scope=completed
-     * for orders closed after admin collected cash from the driver (not shown on the active board).
+     * Delivery drivers:
+     * - ?scope=active (default): assigned orders in the delivery panel that are not paid yet (work in progress).
+     * - ?scope=completed: delivered + paid, or status completed (history / settled — same idea as Filament admin Completed tab).
+     *
+     * Staff (admin, confirmation, manager): scope is ignored; full paginated list.
      */
     public function index(Request $request): JsonResponse
     {
@@ -116,9 +119,19 @@ class OrderController extends Controller
             $query->where('delivery_man_id', $user->id);
 
             if ($scope === 'completed') {
-                $query->where('status', 'completed');
+                $query->where(function (Builder $q): void {
+                    $q->where('status', 'completed')
+                        ->orWhere(function (Builder $inner): void {
+                            $inner->where('status', 'delivered')
+                                ->where('payment_status', 'paid');
+                        });
+                });
             } else {
-                $query->whereIn('status', Order::DELIVERY_PANEL_STATUSES);
+                $query->whereIn('status', Order::DELIVERY_PANEL_STATUSES)
+                    ->where(function (Builder $b): void {
+                        $b->whereNull('payment_status')
+                            ->orWhere('payment_status', '!=', 'paid');
+                    });
             }
         }
 
