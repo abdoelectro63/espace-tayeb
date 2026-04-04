@@ -32,6 +32,7 @@ Set in the environment **Variables** UI (adjust to your secrets):
 | `APP_KEY` | Cloud can generate, or `base64:…` from `php artisan key:generate --show` |
 | `DB_*` | Usually filled when MySQL is attached |
 | `SESSION_DRIVER` / `QUEUE_CONNECTION` / `CACHE_STORE` | Prefer **`database`** or **Redis/KV** if you add a cache; ensure migrations have run so `sessions`, `jobs`, `cache` tables exist |
+| `SESSION_DRIVER` (critical for admin) | **Do not set `cookie`.** Filament and Livewire put a lot in the session; the cookie driver packs it into one `Set-Cookie`, which browsers **reject** above ~4096 bytes. Symptoms: console *"Set-Cookie header is ignored"*, missing toast notifications, flaky CSRF. Use **`database`** (this repo’s default) and confirm the `sessions` table exists after `migrate`. |
 | `MAIL_*` | For notifications |
 | `VITIPS_*`, `BACKUP_*`, etc. | Copy from local `.env` as needed |
 
@@ -62,6 +63,7 @@ php artisan migrate --force
 
 ## 7. First deploy checklist
 
+- [ ] **`SESSION_DRIVER=database`** (or redis/file) — not `cookie` (see environment table above).
 - [ ] Migrations succeed on **MySQL** (fix any ordering / duplicate-table issues locally first).
 - [ ] Build log shows `npm run build` and `public/build` manifest.
 - [ ] Create an admin user (`php artisan tinker` from Cloud **Commands**, or a one-time seeder).
