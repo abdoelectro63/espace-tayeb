@@ -63,12 +63,25 @@ final class ImageOptimizer
 
         $relativePath = sprintf('%s/%s.webp', $directory, Str::uuid()->toString());
 
-        $source = $file->getRealPath() ?: $file->getPathname();
+        /*
+         * Livewire temp files on S3/R2: getRealPath()/path() is not a local filesystem path — Intervention
+         * cannot open it. TemporaryUploadedFile::get() pulls bytes from the configured temp disk.
+         */
+        $imageInput = $file instanceof TemporaryUploadedFile
+            ? $file->get()
+            : ($file->getRealPath() ?: $file->getPathname());
+
+        if ($file instanceof TemporaryUploadedFile && (! is_string($imageInput) || $imageInput === '')) {
+            throw ValidationException::withMessages([
+                $validationKey => [__('Could not read the uploaded file from storage. Try again or check Livewire temp disk (S3/R2) credentials.')],
+            ]);
+        }
 
         Log::info('ImageOptimizer: processing admin upload', [
             'bytes' => $size,
             'mime' => $mime,
             'target' => $relativePath,
+            'source' => $file instanceof TemporaryUploadedFile ? 'temporary_upload_bytes' : 'local_path',
         ]);
 
         @set_time_limit(120);
@@ -78,7 +91,7 @@ final class ImageOptimizer
         }
 
         try {
-            $encoded = Image::read($source)
+            $encoded = Image::read($imageInput)
                 ->scaleDown(self::MAX_WIDTH)
                 ->toWebp(self::WEBP_QUALITY);
         } catch (Throwable $e) {
