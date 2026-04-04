@@ -183,6 +183,8 @@ class ProductForm
                             ->disk('public')
                             ->visibility('public')
                             ->directory('products/titles')
+                            ->maxSize(5120)
+                            ->acceptedFileTypes(['image/jpeg', 'image/png', 'image/webp', 'image/gif'])
                             ->imageEditor()
                             ->saveUploadedFileUsing(function (BaseFileUpload $component, TemporaryUploadedFile $file): ?string {
                                 return ImageOptimizer::processAndStore($file, 'products/titles', 'main_image');
@@ -195,6 +197,8 @@ class ProductForm
                             ->image()
                             ->disk('public')
                             ->visibility('public')
+                            ->maxSize(5120)
+                            ->acceptedFileTypes(['image/jpeg', 'image/png', 'image/webp', 'image/gif'])
                             ->multiple()
                             ->reorderable()
                             ->appendFiles()

@@ -57,6 +57,8 @@ class CategoryForm
                             ->disk('public')
                             ->visibility('public')
                             ->directory('categories/images')
+                            ->maxSize(5120)
+                            ->acceptedFileTypes(['image/jpeg', 'image/png', 'image/webp', 'image/gif'])
                             ->imageEditor()
                             ->saveUploadedFileUsing(function (BaseFileUpload $component, TemporaryUploadedFile $file): ?string {
                                 return ImageOptimizer::processAndStore($file, 'categories/images', 'image');
