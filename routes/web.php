@@ -41,5 +41,7 @@ Route::middleware('auth')->group(function () {
 });
 
 Route::get('/{path}', [StoreController::class, 'category'])
-    ->where('path', '.*')
+    // Do not capture /api/* — otherwise POST /api/login matches this GET-only route and Laravel
+    // returns "The POST method is not supported" when API routes are missing or mis-cached.
+    ->where('path', '^(?!api(/|$)).*')
     ->name('store.category');
