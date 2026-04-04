@@ -36,6 +36,7 @@ class Product extends Model
         'discount_price',
         'images',
         'main_image',
+        'image',
         'is_active',
         'category_id',
         'upsell_id',
