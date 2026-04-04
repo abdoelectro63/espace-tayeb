@@ -61,9 +61,12 @@ php artisan migrate --force
 
 `--force` is required in production so migrations do not prompt ([knowledge base](https://cloud.laravel.com/docs/knowledge-base/command-failed-prod-app.md)).
 
+If you use **`php artisan route:cache`** in build or deploy, rebuild that cache after any change to `routes/api.php` or `bootstrap/app.php`. If the mobile app gets **404 on `/api/orders`** but `/api/login` works, the running release is usually missing the latest routes file or is serving a **stale route cache** — run **`php artisan route:clear`** on the environment (or redeploy with a fresh `route:cache`).
+
 ## 7. First deploy checklist
 
 - [ ] **`SESSION_DRIVER=database`** (or redis/file) — not `cookie` (see environment table above).
+- [ ] **`bootstrap/app.php`** includes **`api: __DIR__.'/../routes/api.php'`** so `/api/login`, **`GET /api/orders`**, **`PATCH /api/orders/{id}`**, etc. are registered.
 - [ ] Migrations succeed on **MySQL** (fix any ordering / duplicate-table issues locally first).
 - [ ] Build log shows `npm run build` and `public/build` manifest.
 - [ ] Create an admin user (`php artisan tinker` from Cloud **Commands**, or a one-time seeder).

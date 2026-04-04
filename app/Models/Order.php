@@ -11,6 +11,22 @@ class Order extends Model
 {
     use SoftDeletes; // أضف هذا السطر داخل الكلاس
 
+    /**
+     * English slugs stored in `orders.status` (align mobile `statusToApiPayload` with these).
+     *
+     * @var list<string>
+     */
+    public const STATUSES = [
+        'pending',
+        'confirmed',
+        'no_response',
+        'cancelled',
+        'shipped',
+        'delivered',
+        'refuse',
+        'reporter',
+    ];
+
     protected $fillable = [
         'number', 'customer_name', 'customer_phone',
         'city', 'shipping_address', 'total_price',
