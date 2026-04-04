@@ -185,7 +185,7 @@ class ProductForm
                             ->directory('products/titles')
                             ->imageEditor()
                             ->saveUploadedFileUsing(function (BaseFileUpload $component, TemporaryUploadedFile $file): ?string {
-                                return ImageOptimizer::processAndStore($file, 'products/titles');
+                                return ImageOptimizer::processAndStore($file, 'products/titles', 'main_image');
                             })
                             ->helperText('تُحوَّل تلقائياً إلى WebP، بعرض أقصى 1000px وجودة 80%.')
                             ->required(fn (?Model $record): bool => $record === null),
@@ -200,7 +200,7 @@ class ProductForm
                             ->appendFiles()
                             ->directory('products/gallery')
                             ->saveUploadedFileUsing(function (BaseFileUpload $component, TemporaryUploadedFile $file): ?string {
-                                return ImageOptimizer::processAndStore($file, 'products/gallery');
+                                return ImageOptimizer::processAndStore($file, 'products/gallery', 'images');
                             })
                             ->helperText('نفس المعالجة: WebP، عرض أقصى 1000px، جودة 80%.')
                             ->columnSpanFull(),

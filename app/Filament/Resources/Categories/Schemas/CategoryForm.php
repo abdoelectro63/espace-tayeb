@@ -59,7 +59,7 @@ class CategoryForm
                             ->directory('categories/images')
                             ->imageEditor()
                             ->saveUploadedFileUsing(function (BaseFileUpload $component, TemporaryUploadedFile $file): ?string {
-                                return ImageOptimizer::processAndStore($file, 'categories/images');
+                                return ImageOptimizer::processAndStore($file, 'categories/images', 'image');
                             })
                             ->helperText('تُحوَّل تلقائياً إلى WebP، بعرض أقصى 1000px وجودة 80%.')
                             ->columnSpanFull(),

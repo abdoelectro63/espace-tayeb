@@ -5,6 +5,7 @@ namespace App\Support;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 use Intervention\Image\Laravel\Facades\Image;
 use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
 use Throwable;
@@ -22,20 +23,40 @@ final class ImageOptimizer
 
     /**
      * @param  string  $directory  Path segment under the public disk, e.g. `products/titles`, `categories/images` (no leading slash).
+     * @param  string  $validationKey  Filament/Livewire field name for ValidationException mapping.
      */
-    public static function processAndStore(TemporaryUploadedFile $file, string $directory): string
+    public static function processAndStore(TemporaryUploadedFile $file, string $directory, string $validationKey = 'file'): string
     {
+        if (! extension_loaded('gd') && ! extension_loaded('imagick')) {
+            throw ValidationException::withMessages([
+                $validationKey => [__('The server needs the GD or Imagick PHP extension to process images.')],
+            ]);
+        }
+
         $directory = trim($directory, '/');
 
         $relativePath = sprintf('%s/%s.webp', $directory, Str::uuid()->toString());
 
         $source = $file->getRealPath() ?: $file->getPathname();
 
-        $encoded = Image::read($source)
-            ->scaleDown(self::MAX_WIDTH)
-            ->toWebp(self::WEBP_QUALITY);
+        try {
+            $encoded = Image::read($source)
+                ->scaleDown(self::MAX_WIDTH)
+                ->toWebp(self::WEBP_QUALITY);
+        } catch (Throwable $e) {
+            report($e);
 
-        Storage::disk('public')->put($relativePath, (string) $encoded, 'public');
+            throw ValidationException::withMessages([
+                $validationKey => [__('Could not read or convert this image. Try another file or format (JPG, PNG, WebP).')],
+            ]);
+        }
+
+        $written = Storage::disk('public')->put($relativePath, (string) $encoded, 'public');
+        if ($written === false) {
+            throw ValidationException::withMessages([
+                $validationKey => [__('Could not save the image. For Cloudflare R2 set FILESYSTEM_PUBLIC_DRIVER=s3 and verify AWS_* in .env.')],
+            ]);
+        }
 
         return $relativePath;
     }

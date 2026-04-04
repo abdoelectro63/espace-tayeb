@@ -83,6 +83,11 @@ class AppServiceProvider extends ServiceProvider
             URL::forceScheme('https');
         }
 
+        // Avoid PHP notices/deprecations corrupting Livewire JSON responses when debug is off.
+        if (! $this->app->runningInConsole() && ! config('app.debug')) {
+            ini_set('display_errors', '0');
+        }
+
         Page::observe(PageObserver::class);
         Menu::observe(MenuObserver::class);
         MenuItem::observe(MenuItemObserver::class);
