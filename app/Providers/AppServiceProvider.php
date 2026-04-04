@@ -18,6 +18,7 @@ use Illuminate\Pagination\Paginator;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
+use RuntimeException;
 use Throwable;
 
 class AppServiceProvider extends ServiceProvider
@@ -79,6 +80,12 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        if ($this->app->environment('production') && config('session.driver') === 'cookie') {
+            throw new RuntimeException(
+                'SESSION_DRIVER cannot be "cookie" in production: the session is stored in one browser cookie and browsers reject Set-Cookie when name+value exceeds ~4096 bytes. That breaks Livewire saves and Filament toast notifications. Set SESSION_DRIVER to database, redis, or file, run migrations for the sessions table (if using database), then php artisan config:clear.'
+            );
+        }
+
         if (config('app.env') === 'production') {
             URL::forceScheme('https');
         }
