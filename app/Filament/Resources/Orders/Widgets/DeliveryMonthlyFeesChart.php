@@ -17,7 +17,7 @@ class DeliveryMonthlyFeesChart extends ChartWidget
     protected function getBaseQuery()
     {
         $query = Order::query()
-            ->where('status', 'delivered')
+            ->whereIn('status', ['delivered', 'completed'])
             ->whereNotNull('delivery_man_id');
 
         if ($this->isDeliveryMan()) {

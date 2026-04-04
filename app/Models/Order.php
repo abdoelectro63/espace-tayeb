@@ -25,6 +25,7 @@ class Order extends Model
         'delivered',
         'refuse',
         'reporter',
+        'completed',
     ];
 
     /**
@@ -72,8 +73,8 @@ class Order extends Model
     protected static function booted(): void
     {
         static::saving(function (self $order): void {
-            // Business rule: payment can only be marked paid after delivery.
-            if ($order->status !== 'delivered' && $order->payment_status === 'paid') {
+            // Business rule: payment can only be marked paid after delivery (or closed order).
+            if (! in_array($order->status, ['delivered', 'completed'], true) && $order->payment_status === 'paid') {
                 $order->payment_status = 'unpaid';
                 $order->paid_at = null;
             }
@@ -102,5 +103,25 @@ class Order extends Model
     public function carrierCitySelections(): HasMany
     {
         return $this->hasMany(OrderCarrierCitySelection::class);
+    }
+
+    /**
+     * Terminal state after admin confirms cash was collected from the delivery driver.
+     */
+    public function isCompletedSettlement(): bool
+    {
+        return $this->status === 'completed';
+    }
+
+    /**
+     * Driver must not change the order via API (customer paid, waiting office settlement, or already closed).
+     */
+    public function isLockedForDeliveryManApi(): bool
+    {
+        if ($this->status === 'completed') {
+            return true;
+        }
+
+        return $this->status === 'delivered' && $this->payment_status === 'paid';
     }
 }

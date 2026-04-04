@@ -76,8 +76,8 @@ class OrderResource extends Resource
 
     public static function getEditAuthorizationResponse(Model $record): Response
     {
-        if ($record instanceof Order && $record->status === 'delivered') {
-            return Response::deny('لا يمكن تعديل طلبية تم تسليمها.');
+        if ($record instanceof Order && in_array($record->status, ['delivered', 'completed'], true)) {
+            return Response::deny('لا يمكن تعديل طلبية تم تسليمها أو إقفالها.');
         }
 
         return parent::getEditAuthorizationResponse($record);

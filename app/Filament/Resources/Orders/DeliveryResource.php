@@ -94,7 +94,9 @@ class DeliveryResource extends Resource
         $query = parent::getEloquentQuery();
 
         $query
-            ->whereIn('status', ['confirmed', 'shipped', 'delivered', 'no_response', 'cancelled', 'refuse', 'reporter'])
+            ->whereIn('status', [
+                'confirmed', 'shipped', 'delivered', 'no_response', 'cancelled', 'refuse', 'reporter', 'completed',
+            ])
             ->with('deliveryMan');
 
         if (auth()->user()?->role === 'delivery_man') {

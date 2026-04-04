@@ -16,8 +16,8 @@ use App\Services\Shipping\ShippingManager;
 use Filament\Actions\Action;
 use Filament\Actions\BulkAction;
 use Filament\Actions\EditAction;
-use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\DatePicker;
+use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
@@ -120,10 +120,7 @@ class DeliveriesTable
                         fn (Builder $query, string $search): Builder => $query->where('tracking_number', 'like', '%'.$search.'%'),
                     )
                     ->copyable()
-                    ->visible(fn ($livewire): bool => in_array(($livewire->activeTab ?? null), [
-                        'completed',
-                        'delivered_paid',
-                    ], true)),
+                    ->visible(fn ($livewire): bool => ($livewire->activeTab ?? null) === 'completed'),
 
                 TextColumn::make('shipping_provider_status')
                     ->label('الحالة في شركة التوصيل')
@@ -148,6 +145,7 @@ class DeliveriesTable
                             'reporter', 'report', 'مؤجل' => 'info',
                             'shipped', 'expedie', 'تم الشحن' => 'warning',
                             'delivered', 'livre', 'تم التسليم' => 'gray',
+                            'completed', 'cloture', 'مغلق' => 'success',
                             'pending', 'en attente', 'انتظار' => 'gray',
                             default => 'gray',
                         };
@@ -401,6 +399,25 @@ class DeliveriesTable
                             ->success()
                             ->send();
                     }),
+
+                Action::make('confirmCashCollectedFromDriver')
+                    ->label('إقفال بعد تحصيل المبلغ من الموزع')
+                    ->icon('heroicon-o-check-badge')
+                    ->color('success')
+                    ->requiresConfirmation()
+                    ->modalDescription('تُعلَم الطلبية كمغلقة؛ تختفي من قائمة الموزّع النشطة وتظهر في تبويب «Completed» بالتطبيق.')
+                    ->visible(fn ($record): bool => (Livewire::current()?->activeTab ?? null) === 'completed'
+                        && in_array(auth()->user()?->role, ['admin', 'confirmation', 'manager'], true)
+                        && $record->status === 'delivered'
+                        && $record->payment_status === 'paid')
+                    ->action(function (Order $record): void {
+                        $record->update(['status' => 'completed']);
+
+                        Notification::make()
+                            ->title('تم إقفال الطلبية')
+                            ->success()
+                            ->send();
+                    }),
             ])
             ->bulkActions([
                 BulkAction::make('assignDeliveryMan')
@@ -516,6 +533,34 @@ class DeliveriesTable
                         Notification::make()
                             ->title($updatedCount > 0
                                 ? "تم تأكيد قبض المبلغ لـ {$updatedCount} طلب(ات)"
+                                : 'لم يتم تحديث أي طلب')
+                            ->success()
+                            ->send();
+                    }),
+
+                BulkAction::make('closeAfterDriverSettlementBulk')
+                    ->label('إقفال المحدد (تم تحصيل المبلغ من الموزع)')
+                    ->icon('heroicon-o-check-badge')
+                    ->color('success')
+                    ->deselectRecordsAfterCompletion()
+                    ->visible(fn (): bool => (Livewire::current()?->activeTab ?? null) === 'completed'
+                        && in_array(auth()->user()?->role, ['admin', 'confirmation', 'manager'], true))
+                    ->requiresConfirmation()
+                    ->action(function (Collection $records): void {
+                        $updatedCount = 0;
+
+                        $records->each(function (Order $order) use (&$updatedCount): void {
+                            if ($order->status !== 'delivered' || $order->payment_status !== 'paid') {
+                                return;
+                            }
+
+                            $order->update(['status' => 'completed']);
+                            $updatedCount++;
+                        });
+
+                        Notification::make()
+                            ->title($updatedCount > 0
+                                ? "تم إقفال {$updatedCount} طلب(ات)"
                                 : 'لم يتم تحديث أي طلب')
                             ->success()
                             ->send();
@@ -1025,7 +1070,7 @@ class DeliveriesTable
                     ])
                     ->action(function (array $data): void {
                         $query = Order::query()
-                            ->where('status', 'delivered')
+                            ->whereIn('status', ['delivered', 'completed'])
                             ->whereNotNull('delivery_man_id');
 
                         if (auth()->user()?->role === 'delivery_man') {
@@ -1054,7 +1099,7 @@ class DeliveriesTable
 
                         if (in_array(auth()->user()?->role, ['admin', 'confirmation'], true)) {
                             $perDelivery = Order::query()
-                                ->where('status', 'delivered')
+                                ->whereIn('status', ['delivered', 'completed'])
                                 ->whereNotNull('delivery_man_id')
                                 ->when(
                                     filled($data['from'] ?? null),
@@ -1292,10 +1337,14 @@ class DeliveriesTable
     }
 
     /**
-     * طلبية مُسلّمة ومدفوعة — لا تعديل في جدول التوصيل.
+     * Delivered+paid (awaiting office cash from driver) or fully closed — lock inline edits in the delivery table.
      */
     public static function isDeliveredAndPaid(Order $record): bool
     {
+        if ($record->status === 'completed') {
+            return true;
+        }
+
         return $record->status === 'delivered' && $record->payment_status === 'paid';
     }
 

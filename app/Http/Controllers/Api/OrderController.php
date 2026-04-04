@@ -14,8 +14,10 @@ use Illuminate\Validation\Rule;
 class OrderController extends Controller
 {
     /**
-     * List orders as JSON. Delivery drivers: same scope as Filament {@see DeliveryResource} — only orders assigned to them
-     * and only statuses shown on the delivery board (excludes e.g. pending). Staff see all orders.
+     * List orders as JSON.
+     *
+     * Delivery drivers: use ?scope=active (default) for assigned, in-progress board orders, or ?scope=completed
+     * for orders closed after admin collected cash from the driver (not shown on the active board).
      */
     public function index(Request $request): JsonResponse
     {
@@ -24,7 +26,14 @@ class OrderController extends Controller
             return response()->json(['message' => 'Forbidden.'], 403);
         }
 
-        $query = $this->baseOrderQuery($user);
+        $scope = (string) $request->query('scope', 'active');
+        if (! in_array($scope, ['active', 'completed'], true)) {
+            return response()->json([
+                'message' => 'Invalid scope. Use active or completed.',
+            ], 422);
+        }
+
+        $query = $this->baseOrderQuery($user, $scope);
 
         $perPage = min(max((int) $request->query('per_page', 25), 1), 100);
         $orders = $query->paginate($perPage);
@@ -48,14 +57,20 @@ class OrderController extends Controller
             return response()->json(['message' => 'Forbidden.'], 403);
         }
 
-        if ($user->role === 'delivery_man' && ! in_array($order->status, Order::DELIVERY_PANEL_STATUSES, true)) {
-            return response()->json(['message' => 'Forbidden.'], 403);
+        if ($order->status === 'completed') {
+            return response()->json([
+                'message' => 'Order is closed.',
+            ], 403);
         }
 
-        if ($order->status === 'delivered' && $this->isDeliveredAndPaid($order)) {
+        if ($user->role === 'delivery_man' && $order->isLockedForDeliveryManApi()) {
             return response()->json([
-                'message' => 'Delivered and paid orders cannot be modified.',
+                'message' => 'This order cannot be changed from the app (awaiting office settlement or already closed).',
             ], 403);
+        }
+
+        if ($user->role === 'delivery_man' && ! in_array($order->status, Order::DELIVERY_PANEL_STATUSES, true)) {
+            return response()->json(['message' => 'Forbidden.'], 403);
         }
 
         if ($order->status === 'delivered' && $user->role !== 'delivery_man') {
@@ -91,16 +106,20 @@ class OrderController extends Controller
     /**
      * @return Builder<Order>
      */
-    private function baseOrderQuery(User $user): Builder
+    private function baseOrderQuery(User $user, string $scope = 'active'): Builder
     {
         $query = Order::query()
             ->with(['orderItems.product', 'deliveryMan'])
             ->orderByDesc('created_at');
 
         if ($user->role === 'delivery_man') {
-            $query
-                ->where('delivery_man_id', $user->id)
-                ->whereIn('status', Order::DELIVERY_PANEL_STATUSES);
+            $query->where('delivery_man_id', $user->id);
+
+            if ($scope === 'completed') {
+                $query->where('status', 'completed');
+            } else {
+                $query->whereIn('status', Order::DELIVERY_PANEL_STATUSES);
+            }
         }
 
         return $query;
@@ -129,10 +148,5 @@ class OrderController extends Controller
         }
 
         return Order::STATUSES;
-    }
-
-    private function isDeliveredAndPaid(Order $order): bool
-    {
-        return $order->status === 'delivered' && $order->payment_status === 'paid';
     }
 }

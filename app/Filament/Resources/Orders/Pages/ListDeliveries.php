@@ -6,6 +6,7 @@ use App\Filament\Resources\Orders\DeliveryResource;
 use App\Filament\Resources\Orders\Widgets\DeliveryMonthlyFeesChart;
 use App\Filament\Resources\Orders\Widgets\DeliveryMonthlyStatsOverview;
 use App\Filament\Resources\ShippingInvoiceImports\ShippingInvoiceImportResource;
+use App\Models\Order;
 use Filament\Actions\Action;
 use Filament\Resources\Pages\ListRecords;
 use Filament\Schemas\Components\Tabs\Tab;
@@ -71,29 +72,17 @@ class ListDeliveries extends ListRecords
             return [
                 'my_orders' => Tab::make('My Orders')
                     ->badge((clone $baseQuery)
-                        ->whereIn('status', ['confirmed', 'shipped', 'no_response', 'cancelled', 'refuse', 'reporter', 'delivered'])
-                        ->where(function (Builder $query): void {
-                            $query
-                                ->whereNull('payment_status')
-                                ->orWhere('payment_status', '!=', 'paid');
-                        })
+                        ->whereIn('status', Order::DELIVERY_PANEL_STATUSES)
                         ->count())
                     ->modifyQueryUsing(fn (Builder $query): Builder => $query
-                        ->whereIn('status', ['confirmed', 'shipped', 'no_response', 'cancelled', 'refuse', 'reporter', 'delivered'])
-                        ->where(function (Builder $builder): void {
-                            $builder
-                                ->whereNull('payment_status')
-                                ->orWhere('payment_status', '!=', 'paid');
-                        })
+                        ->whereIn('status', Order::DELIVERY_PANEL_STATUSES)
                         ->latest('created_at')),
-                'delivered_paid' => Tab::make('Delivered & Paid')
+                'completed' => Tab::make('Completed')
                     ->badge((clone $baseQuery)
-                        ->where('status', 'delivered')
-                        ->where('payment_status', 'paid')
+                        ->where('status', 'completed')
                         ->count())
                     ->modifyQueryUsing(fn (Builder $query): Builder => $query
-                        ->where('status', 'delivered')
-                        ->where('payment_status', 'paid')
+                        ->where('status', 'completed')
                         ->latest('created_at')),
             ];
         }
@@ -140,12 +129,20 @@ class ListDeliveries extends ListRecords
                     ->latest('created_at')),
             'completed' => Tab::make('Completed')
                 ->badge((clone $baseQuery)
-                    ->where('status', 'delivered')
-                    ->where('payment_status', 'paid')
+                    ->where(function (Builder $q): void {
+                        $q->where('status', 'completed')
+                            ->orWhere(function (Builder $inner): void {
+                                $inner->where('status', 'delivered')->where('payment_status', 'paid');
+                            });
+                    })
                     ->count())
                 ->modifyQueryUsing(fn (Builder $query): Builder => $query
-                    ->where('status', 'delivered')
-                    ->where('payment_status', 'paid')
+                    ->where(function (Builder $q): void {
+                        $q->where('status', 'completed')
+                            ->orWhere(function (Builder $inner): void {
+                                $inner->where('status', 'delivered')->where('payment_status', 'paid');
+                            });
+                    })
                     ->latest('created_at')),
         ];
     }

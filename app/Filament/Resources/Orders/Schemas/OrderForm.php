@@ -66,6 +66,7 @@ class OrderForm
                                 'cancelled' => 'ملغي',
                                 'shipped' => 'في الطريق',
                                 'delivered' => 'تم التوصيل',
+                                'completed' => 'مغلقة (تحصيل من الموزع)',
                             ])
                             ->default('pending')
                             ->required(),
