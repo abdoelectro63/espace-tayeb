@@ -9,6 +9,7 @@ use App\Models\Product;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
 use RuntimeException;
 
 class OrderImportService
@@ -18,59 +19,124 @@ class OrderImportService
      */
     public function parseCsvToRows(UploadedFile|string $file): array
     {
-        $path = $file instanceof UploadedFile ? $file->getRealPath() : $file;
-        if ($path === false || ! is_readable($path)) {
+        $handle = $this->openCsvReadHandle($file);
+
+        try {
+            return $this->readCsvRowsFromStream($handle);
+        } finally {
+            if (is_resource($handle)) {
+                fclose($handle);
+            }
+        }
+    }
+
+    /**
+     * Livewire stores uploads on its configured disk; reading via path + is_readable() can fail in production
+     * even though Flysystem can stream the same file. Standard uploads fall back to fopen or in-memory parse.
+     *
+     * @return resource
+     */
+    private function openCsvReadHandle(UploadedFile|string $file): mixed
+    {
+        if ($file instanceof TemporaryUploadedFile) {
+            if (! $file->exists()) {
+                throw new RuntimeException('تعذر قراءة ملف CSV.');
+            }
+
+            $stream = $file->readStream();
+            if (! is_resource($stream)) {
+                throw new RuntimeException('تعذر قراءة ملف CSV.');
+            }
+
+            return $stream;
+        }
+
+        if ($file instanceof UploadedFile) {
+            $path = $file->getRealPath();
+            if ($path === false || $path === '') {
+                $path = $file->getPathname();
+            }
+
+            if (is_string($path) && $path !== '') {
+                $handle = @fopen($path, 'rb');
+                if ($handle !== false) {
+                    return $handle;
+                }
+            }
+
+            $contents = $file->getContent();
+            if ($contents === '') {
+                throw new RuntimeException('ملف CSV فارغ.');
+            }
+
+            $memory = fopen('php://memory', 'r+b');
+            if ($memory === false) {
+                throw new RuntimeException('تعذر فتح ملف CSV.');
+            }
+
+            fwrite($memory, $contents);
+            rewind($memory);
+
+            return $memory;
+        }
+
+        if (! is_string($file) || $file === '') {
             throw new RuntimeException('تعذر قراءة ملف CSV.');
         }
 
-        $handle = fopen($path, 'rb');
+        $handle = @fopen($file, 'rb');
         if ($handle === false) {
             throw new RuntimeException('تعذر فتح ملف CSV.');
         }
 
-        try {
-            $headerLine = fgetcsv($handle);
-            if ($headerLine === false || $headerLine === []) {
-                throw new RuntimeException('ملف CSV فارغ.');
-            }
+        return $handle;
+    }
 
-            /** @var list<string> */
-            $headers = [];
-            foreach ($headerLine as $h) {
-                $raw = (string) $h;
-                $canonical = $this->canonicalKeyFromHeader($raw);
-                $headers[] = $canonical ?? $this->normalizeHeader($raw);
-            }
-
-            $rows = [];
-
-            while (($line = fgetcsv($handle)) !== false) {
-                if ($line === null || $line === [null] || $line === []) {
-                    continue;
-                }
-                $row = [];
-                foreach ($headers as $i => $key) {
-                    if ($key === '') {
-                        continue;
-                    }
-                    $val = trim((string) ($line[$i] ?? ''));
-                    if ($val === '') {
-                        continue;
-                    }
-                    if (! isset($row[$key])) {
-                        $row[$key] = $val;
-                    }
-                }
-                if ($this->rowIsEmpty($row)) {
-                    continue;
-                }
-                $rows[] = $row;
-            }
-
-            return $rows;
-        } finally {
-            fclose($handle);
+    /**
+     * @param  resource  $handle
+     * @return list<array<string, string>>
+     */
+    private function readCsvRowsFromStream(mixed $handle): array
+    {
+        $headerLine = fgetcsv($handle);
+        if ($headerLine === false || $headerLine === []) {
+            throw new RuntimeException('ملف CSV فارغ.');
         }
+
+        /** @var list<string> */
+        $headers = [];
+        foreach ($headerLine as $h) {
+            $raw = (string) $h;
+            $canonical = $this->canonicalKeyFromHeader($raw);
+            $headers[] = $canonical ?? $this->normalizeHeader($raw);
+        }
+
+        $rows = [];
+
+        while (($line = fgetcsv($handle)) !== false) {
+            if ($line === null || $line === [null] || $line === []) {
+                continue;
+            }
+            $row = [];
+            foreach ($headers as $i => $key) {
+                if ($key === '') {
+                    continue;
+                }
+                $val = trim((string) ($line[$i] ?? ''));
+                if ($val === '') {
+                    continue;
+                }
+                if (! isset($row[$key])) {
+                    $row[$key] = $val;
+                }
+            }
+            if ($this->rowIsEmpty($row)) {
+                continue;
+            }
+            $rows[] = $row;
+        }
+
+        return $rows;
     }
 
     /**

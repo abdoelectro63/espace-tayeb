@@ -52,15 +52,12 @@ class ImportOrdersCsv extends Page
             'csv_file' => ['required', 'file', 'max:5120'],
         ]);
 
-        $path = $this->csv_file?->getRealPath();
-        if ($path === false || $path === null) {
-            Notification::make()->title('تعذر قراءة الملف')->danger()->send();
-
+        if ($this->csv_file === null) {
             return;
         }
 
         try {
-            $raw = $import->parseCsvToRows($path);
+            $raw = $import->parseCsvToRows($this->csv_file);
             $mapped = $import->buildMappingRows($raw);
             $this->rows = array_map(fn (array $row): array => $this->hydrateEditableFields($row), $mapped);
             $this->syncProductId = $this->guessInitialSyncProductId();
