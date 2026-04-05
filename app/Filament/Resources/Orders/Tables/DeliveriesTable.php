@@ -384,10 +384,13 @@ class DeliveriesTable
                                     ."\n".'المبلغ الواجب تسليمه: '.number_format($net, 2).' MAD';
                             }),
                     ])
-                    ->visible(fn ($record): bool => (Livewire::current()?->activeTab ?? null) === 'collection'
-                        && in_array(auth()->user()?->role, ['admin', 'confirmation'], true)
+                    ->visible(fn (Order $record): bool => (Livewire::current()?->activeTab ?? null) === 'collection'
                         && $record->status === 'delivered'
-                        && $record->payment_status !== 'paid')
+                        && $record->payment_status !== 'paid'
+                        && (
+                            auth()->user()?->role === 'admin'
+                            || (auth()->user()?->role === 'confirmation' && $record->isLocalDriverCashCollectionOrder())
+                        ))
                     ->action(function ($record): void {
                         $record->update([
                             'payment_status' => 'paid',
@@ -406,10 +409,13 @@ class DeliveriesTable
                     ->color('success')
                     ->requiresConfirmation()
                     ->modalDescription('تُعلَم الطلبية كمغلقة؛ تختفي من قائمة الموزّع النشطة وتظهر في تبويب «Completed» بالتطبيق.')
-                    ->visible(fn ($record): bool => (Livewire::current()?->activeTab ?? null) === 'completed'
-                        && in_array(auth()->user()?->role, ['admin', 'confirmation', 'manager'], true)
+                    ->visible(fn (Order $record): bool => (Livewire::current()?->activeTab ?? null) === 'completed'
                         && $record->status === 'delivered'
-                        && $record->payment_status === 'paid')
+                        && $record->payment_status === 'paid'
+                        && (
+                            in_array(auth()->user()?->role, ['admin', 'manager'], true)
+                            || (auth()->user()?->role === 'confirmation' && $record->isLocalDriverCashCollectionOrder())
+                        ))
                     ->action(function (Order $record): void {
                         $record->update(['status' => 'completed']);
 
@@ -451,7 +457,7 @@ class DeliveriesTable
                             ->send();
                     })
                     ->deselectRecordsAfterCompletion()
-                    ->visible(fn (): bool => auth()->user()?->role === 'admin'
+                    ->visible(fn (): bool => in_array(auth()->user()?->role, ['admin', 'confirmation'], true)
                         && ! in_array(Livewire::current()?->activeTab ?? null, ['collection', 'completed'], true))
                     ->requiresConfirmation(),
 
@@ -460,7 +466,7 @@ class DeliveriesTable
                     ->icon('heroicon-o-arrow-uturn-left')
                     ->color('danger')
                     ->deselectRecordsAfterCompletion()
-                    ->visible(fn (): bool => auth()->user()?->role === 'admin'
+                    ->visible(fn (): bool => in_array(auth()->user()?->role, ['admin', 'confirmation'], true)
                         && ! in_array(Livewire::current()?->activeTab ?? null, ['collection', 'completed'], true))
                     ->requiresConfirmation()
                     ->action(function (Collection $records): void {
@@ -516,9 +522,14 @@ class DeliveriesTable
                     })
                     ->action(function (Collection $records): void {
                         $updatedCount = 0;
+                        $role = auth()->user()?->role;
 
-                        $records->each(function ($order) use (&$updatedCount): void {
+                        $records->each(function (Order $order) use (&$updatedCount, $role): void {
                             if ($order->status !== 'delivered' || $order->payment_status === 'paid') {
+                                return;
+                            }
+
+                            if ($role === 'confirmation' && ! $order->isLocalDriverCashCollectionOrder()) {
                                 return;
                             }
 
@@ -544,13 +555,21 @@ class DeliveriesTable
                     ->color('success')
                     ->deselectRecordsAfterCompletion()
                     ->visible(fn (): bool => (Livewire::current()?->activeTab ?? null) === 'completed'
-                        && in_array(auth()->user()?->role, ['admin', 'confirmation', 'manager'], true))
+                        && (
+                            in_array(auth()->user()?->role, ['admin', 'manager'], true)
+                            || auth()->user()?->role === 'confirmation'
+                        ))
                     ->requiresConfirmation()
                     ->action(function (Collection $records): void {
                         $updatedCount = 0;
+                        $role = auth()->user()?->role;
 
-                        $records->each(function (Order $order) use (&$updatedCount): void {
+                        $records->each(function (Order $order) use (&$updatedCount, $role): void {
                             if ($order->status !== 'delivered' || $order->payment_status !== 'paid') {
+                                return;
+                            }
+
+                            if ($role === 'confirmation' && ! $order->isLocalDriverCashCollectionOrder()) {
                                 return;
                             }
 
@@ -1044,7 +1063,7 @@ class DeliveriesTable
                             ->send();
                     })
                     ->deselectRecordsAfterCompletion()
-                    ->visible(fn (): bool => auth()->user()?->role === 'admin'
+                    ->visible(fn (): bool => in_array(auth()->user()?->role, ['admin', 'confirmation'], true)
                         && (Livewire::current()?->activeTab ?? null) === 'pending'),
             ])
             ->headerActions([

@@ -48,6 +48,6 @@ class CategoryResource extends Resource
 
     public static function canViewAny(): bool
     {
-        return auth()->user()?->role !== 'delivery_man';
+        return auth()->user()?->role === 'admin';
     }
 }

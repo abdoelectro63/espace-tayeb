@@ -124,4 +124,14 @@ class Order extends Model
 
         return $this->status === 'delivered' && $this->payment_status === 'paid';
     }
+
+    /**
+     * Collection-tab cash actions apply to local driver runs, not carrier (shipping company) shipments.
+     */
+    public function isLocalDriverCashCollectionOrder(): bool
+    {
+        return $this->delivery_man_id !== null
+            && blank($this->shipping_company)
+            && $this->shipping_company_id === null;
+    }
 }

@@ -46,7 +46,7 @@ class FooterSettingsPage extends Page
 
     public static function canAccess(): bool
     {
-        return ! in_array(auth()->user()?->role, ['delivery_man', 'manager'], true);
+        return auth()->user()?->role === 'admin';
     }
 
     public function mount(): void
