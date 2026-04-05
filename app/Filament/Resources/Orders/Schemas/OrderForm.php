@@ -36,13 +36,29 @@ class OrderForm
         return round($sum, 2);
     }
 
-    public static function recalculateShippingAndTotal(Get $get, Set $set): void
+    /**
+     * Set shipping fee from zone + cart rules, then refresh order total.
+     */
+    public static function applyZoneBasedShippingFee(Get $get, Set $set): void
     {
         $items = $get('orderItems');
         $zone = (string) ($get('shipping_zone') ?? 'casablanca');
         $arr = is_array($items) ? $items : [];
         $fee = ShippingCalculator::feeForAdminOrderItems($arr, $zone);
         $set('shipping_fee', $fee);
+        $set('total_price', round(self::calculateTotalFromItems($arr) + $fee, 2));
+        $set('_free_shipping', ((float) $fee) <= 0.0);
+    }
+
+    /**
+     * Keep current shipping_fee; only recompute total from line items (after qty/price changes).
+     */
+    public static function recalculateTotalFromItemsAndCurrentShipping(Get $get, Set $set): void
+    {
+        $items = $get('orderItems');
+        $arr = is_array($items) ? $items : [];
+        $fee = max(0, (float) ($get('shipping_fee') ?? 0));
+        $set('shipping_fee', round($fee, 2));
         $set('total_price', round(self::calculateTotalFromItems($arr) + $fee, 2));
     }
 
@@ -91,7 +107,7 @@ class OrderForm
                             ->default('casablanca')
                             ->live()
                             ->afterStateUpdated(function (Get $get, Set $set): void {
-                                self::recalculateShippingAndTotal($get, $set);
+                                self::applyZoneBasedShippingFee($get, $set);
                             })
                             ->required(),
 
@@ -166,7 +182,7 @@ class OrderForm
                             ->relationship('orderItems')
                             ->live()
                             ->afterStateUpdated(function (Get $get, Set $set): void {
-                                self::recalculateShippingAndTotal($get, $set);
+                                self::recalculateTotalFromItemsAndCurrentShipping($get, $set);
                             })
                             ->schema([
                                 Forms\Components\Select::make('product_id')
@@ -179,14 +195,14 @@ class OrderForm
                                     ->afterStateUpdated(function (Set $set, Get $get, $state): void {
                                         $set('product_variation_id', null);
                                         if (blank($state)) {
-                                            self::recalculateShippingAndTotal($get, $set);
+                                            self::recalculateTotalFromItemsAndCurrentShipping($get, $set);
 
                                             return;
                                         }
 
                                         $product = Product::query()->with('variations')->find($state);
                                         if ($product === null) {
-                                            self::recalculateShippingAndTotal($get, $set);
+                                            self::recalculateTotalFromItemsAndCurrentShipping($get, $set);
 
                                             return;
                                         }
@@ -197,7 +213,7 @@ class OrderForm
                                                 $set('product_variation_id', $def->id);
                                                 $set('unit_price', $def->price);
 
-                                                self::recalculateShippingAndTotal($get, $set);
+                                                self::recalculateTotalFromItemsAndCurrentShipping($get, $set);
 
                                                 return;
                                             }
@@ -208,7 +224,7 @@ class OrderForm
                                             : $product->price;
 
                                         $set('unit_price', $price);
-                                        self::recalculateShippingAndTotal($get, $set);
+                                        self::recalculateTotalFromItemsAndCurrentShipping($get, $set);
                                     }),
 
                                 Forms\Components\Select::make('product_variation_id')
@@ -243,7 +259,7 @@ class OrderForm
                                     ->afterStateUpdated(function (Set $set, Get $get, $state): void {
                                         $pid = $get('product_id');
                                         if (blank($pid) || blank($state)) {
-                                            self::recalculateShippingAndTotal($get, $set);
+                                            self::recalculateTotalFromItemsAndCurrentShipping($get, $set);
 
                                             return;
                                         }
@@ -254,7 +270,7 @@ class OrderForm
                                         if ($v !== null) {
                                             $set('unit_price', $v->price);
                                         }
-                                        self::recalculateShippingAndTotal($get, $set);
+                                        self::recalculateTotalFromItemsAndCurrentShipping($get, $set);
                                     }),
 
                                 Forms\Components\TextInput::make('quantity')
@@ -265,7 +281,7 @@ class OrderForm
                                     ->required()
                                     ->live()
                                     ->afterStateUpdated(function (Get $get, Set $set): void {
-                                        self::recalculateShippingAndTotal($get, $set);
+                                        self::recalculateTotalFromItemsAndCurrentShipping($get, $set);
                                     }),
 
                                 Forms\Components\TextInput::make('unit_price')
@@ -275,7 +291,7 @@ class OrderForm
                                     ->required()
                                     ->live()
                                     ->afterStateUpdated(function (Get $get, Set $set): void {
-                                        self::recalculateShippingAndTotal($get, $set);
+                                        self::recalculateTotalFromItemsAndCurrentShipping($get, $set);
                                     }),
                             ])
                             ->columns(3)
@@ -283,13 +299,38 @@ class OrderForm
                             ->addActionLabel('إضافة منتج')
                             ->columnSpanFull(),
 
+                        Forms\Components\Toggle::make('_free_shipping')
+                            ->label('توصيل مجاني')
+                            ->helperText('عند التفعيل تُصبح رسوم التوصيل 0. عند الإلغاء تُعاد حساب الرسوم حسب المنطقة والمنتجات.')
+                            ->dehydrated(false)
+                            ->default(false)
+                            ->live()
+                            ->afterStateUpdated(function (mixed $state, Get $get, Set $set): void {
+                                if ($state) {
+                                    $set('shipping_fee', 0);
+                                    self::recalculateTotalFromItemsAndCurrentShipping($get, $set);
+
+                                    return;
+                                }
+                                self::applyZoneBasedShippingFee($get, $set);
+                            })
+                            ->columnSpanFull(),
+
                         Forms\Components\TextInput::make('shipping_fee')
-                            ->label('رسوم التوصيل (حسب المنطقة والمنتجات)')
+                            ->label('رسوم التوصيل')
+                            ->helperText('يُحدَّث المجموع تلقائياً. تغيير منطقة التوصيل يعيد حساب الرسوم؛ تعديل المنتجات يحافظ على الرسوم الحالية.')
                             ->numeric()
+                            ->minValue(0)
+                            ->step(0.01)
                             ->prefix('MAD')
-                            ->disabled()
-                            ->dehydrated()
-                            ->default(0),
+                            ->required()
+                            ->default(0)
+                            ->live(onBlur: true)
+                            ->afterStateUpdated(function (Get $get, Set $set, mixed $state): void {
+                                $fee = max(0, (float) $state);
+                                $set('_free_shipping', $fee <= 0.0);
+                                self::recalculateTotalFromItemsAndCurrentShipping($get, $set);
+                            }),
 
                         Forms\Components\TextInput::make('total_price')
                             ->label('المجموع (منتجات + توصيل)')
