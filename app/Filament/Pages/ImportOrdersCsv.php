@@ -6,9 +6,13 @@ use App\Filament\Resources\Orders\OrderResource;
 use App\Models\Product;
 use App\Services\OrderImportService;
 use BackedEnum;
+use Filament\Forms\Components\Select;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
+use Filament\Schemas\Schema;
+use Filament\Support\Enums\Width;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
@@ -30,6 +34,8 @@ class ImportOrdersCsv extends Page
     protected static string|UnitEnum|null $navigationGroup = 'الطلبيات';
 
     protected string $view = 'filament.pages.import-orders-csv';
+
+    protected Width|string|null $maxContentWidth = Width::Full;
 
     /** @var array<int, array<string, mixed>> */
     public array $rows = [];
@@ -60,9 +66,38 @@ class ImportOrdersCsv extends Page
         try {
             $raw = $import->parseCsvToRows($this->csv_file);
             $mapped = $import->buildMappingRows($raw);
-            $this->rows = array_map(fn (array $row): array => $this->hydrateEditableFields($row), $mapped);
+            $this->rows = [];
+            foreach ($mapped as $row) {
+                $hydrated = $this->hydrateEditableFields($row);
+                if ($this->shouldDropImportedRow($hydrated)) {
+                    continue;
+                }
+                $this->applyNameAddressFallbacks($hydrated);
+                $this->rows[] = $hydrated;
+            }
+
+            $dupesRemoved = $this->dedupeRowsByPhone();
+            if ($dupesRemoved > 0) {
+                Notification::make()
+                    ->title('تم حذف الصفوف المكررة')
+                    ->body('حُذف '.$dupesRemoved.' صفاً بنفس رقم الهاتف (يُحتفظ بالأول في الملف).')
+                    ->info()
+                    ->send();
+            }
+
+            if ($this->rows === []) {
+                Notification::make()
+                    ->title('لا توجد صفوف صالحة')
+                    ->body('تم تجاهل كل الصفوف التي بلا اسم ولا مدينة في الملف.')
+                    ->warning()
+                    ->send();
+
+                return;
+            }
+
             $this->syncProductId = $this->guessInitialSyncProductId();
             $this->hydrateDefaultsAfterCsvParse();
+            $this->refreshImportSkuPriceForAllRows();
             $this->step = 2;
             $this->csv_file = null;
         } catch (\Throwable $e) {
@@ -75,6 +110,26 @@ class ImportOrdersCsv extends Page
     {
         if ($this->rows === []) {
             Notification::make()->title('لا توجد بيانات للاستيراد')->warning()->send();
+
+            return;
+        }
+
+        $removedDupesBeforeSave = $this->normalizeRowsBeforeFinalize();
+
+        if ($removedDupesBeforeSave > 0) {
+            Notification::make()
+                ->title('صفوف مكررة')
+                ->body('حُذف '.$removedDupesBeforeSave.' صفاً بنفس رقم الهاتف قبل إنشاء الطلبات (يُحتفظ بالأول).')
+                ->warning()
+                ->send();
+        }
+
+        if ($this->rows === []) {
+            Notification::make()
+                ->title('لا توجد صفوف للاستيراد')
+                ->body('أضف اسم الزبون أو المدينة لكل صف على الأقل.')
+                ->warning()
+                ->send();
 
             return;
         }
@@ -165,18 +220,38 @@ class ImportOrdersCsv extends Page
             ->get();
     }
 
-    /**
-     * @return list<array{id: int, label: string}>
-     */
-    public function getProductOptionsForJsProperty(): array
+    public function defaultImportProductForm(Schema $schema): Schema
     {
-        return $this->productsForSelect
-            ->map(fn (Product $p): array => [
-                'id' => $p->id,
-                'label' => $p->name.' ('.$p->code.')',
+        return $schema->statePath('');
+    }
+
+    public function importProductForm(Schema $schema): Schema
+    {
+        return $schema
+            ->columns([
+                'default' => 1,
+                'sm' => 1,
+                'md' => 1,
+                'lg' => 1,
+                'xl' => 1,
+                '2xl' => 1,
             ])
-            ->values()
-            ->all();
+            ->components([
+                Select::make('syncProductId')
+                    ->label('المنتج الموحّد لجميع الطلبات')
+                    ->placeholder('— اختر المنتج —')
+                    ->options(fn (): array => Product::query()
+                        ->where('is_active', true)
+                        ->orderBy('name')
+                        ->get()
+                        ->mapWithKeys(fn (Product $p): array => [$p->id => $p->name.' ('.$p->code.')'])
+                        ->all())
+                    ->searchable()
+                    ->preload()
+                    ->native(false)
+                    ->columnSpanFull()
+                    ->extraFieldWrapperAttributes(['class' => 'w-full !max-w-none']),
+            ]);
     }
 
     /**
@@ -211,11 +286,29 @@ class ImportOrdersCsv extends Page
 
     public function updatedSyncProductId(mixed $value): void
     {
-        $pid = (int) $value;
+        $this->applyProductSelectionToRows();
+    }
+
+    public function updated(string $name, mixed $value): void
+    {
+        if (preg_match('/^rows\.\d+\.product_variation_id$/', $name) === 1) {
+            $index = (int) Str::between($name, 'rows.', '.product_variation_id');
+            $this->refreshImportSkuPriceForRow($index);
+        }
+    }
+
+    /**
+     * Assign product / default variation to every row and refresh SKU & price labels.
+     */
+    private function applyProductSelectionToRows(): void
+    {
+        $pid = (int) ($this->syncProductId ?? 0);
         if ($pid < 1) {
             foreach (array_keys($this->rows) as $i) {
                 $this->rows[$i]['product_id'] = null;
                 $this->rows[$i]['product_variation_id'] = null;
+                $this->rows[$i]['_import_sku'] = '';
+                $this->rows[$i]['_import_price'] = '';
             }
 
             return;
@@ -231,6 +324,51 @@ class ImportOrdersCsv extends Page
             } else {
                 $this->rows[$i]['product_variation_id'] = null;
             }
+        }
+    }
+
+    private function refreshImportSkuPriceForAllRows(): void
+    {
+        $product = Product::query()
+            ->with('variations')
+            ->find((int) ($this->syncProductId ?? 0));
+
+        foreach (array_keys($this->rows) as $i) {
+            $this->refreshImportSkuPriceForRow($i, $product);
+        }
+    }
+
+    private function refreshImportSkuPriceForRow(int $index, ?Product $product = null): void
+    {
+        if (! array_key_exists($index, $this->rows)) {
+            return;
+        }
+
+        $product ??= Product::query()
+            ->with('variations')
+            ->find((int) ($this->syncProductId ?? 0));
+
+        if ($product === null) {
+            $this->rows[$index]['_import_sku'] = '';
+            $this->rows[$index]['_import_price'] = '';
+
+            return;
+        }
+
+        $vid = $this->rows[$index]['product_variation_id'] ?? null;
+        $vid = is_numeric($vid) ? (int) $vid : null;
+
+        if ($product->variations->isNotEmpty()) {
+            $v = $vid !== null && $vid > 0
+                ? $product->variations->firstWhere('id', $vid)
+                : $product->getDefaultVariation();
+            $this->rows[$index]['_import_sku'] = filled($v?->sku) ? (string) $v->sku : (string) $product->code;
+            $this->rows[$index]['_import_price'] = $v !== null
+                ? number_format((float) $v->price, 2).' MAD'
+                : '';
+        } else {
+            $this->rows[$index]['_import_sku'] = (string) $product->code;
+            $this->rows[$index]['_import_price'] = number_format((float) $product->finalUnitPriceForCart(null), 2).' MAD';
         }
     }
 
@@ -292,6 +430,108 @@ class ImportOrdersCsv extends Page
                 $this->rows[$i]['product_variation_id'] = null;
             }
         }
+    }
+
+    /**
+     * Drop rows with no name and no city; apply Client + address=city before validation.
+     *
+     * @param  array<string, mixed>  $row
+     */
+    private function shouldDropImportedRow(array $row): bool
+    {
+        $name = trim((string) ($row['customer_name'] ?? ''));
+        $city = trim((string) ($row['city'] ?? ''));
+
+        return $name === '' && $city === '';
+    }
+
+    /**
+     * @param  array<string, mixed>  $row
+     */
+    private function applyNameAddressFallbacks(array &$row): void
+    {
+        if (trim((string) ($row['customer_name'] ?? '')) === '') {
+            $row['customer_name'] = 'Client';
+        }
+
+        $city = trim((string) ($row['city'] ?? ''));
+        if (trim((string) ($row['shipping_address'] ?? '')) === '' && $city !== '') {
+            $row['shipping_address'] = $city;
+        }
+    }
+
+    /**
+     * @return int Rows removed as duplicate phone numbers after normalization
+     */
+    private function normalizeRowsBeforeFinalize(): int
+    {
+        $out = [];
+        foreach ($this->rows as $row) {
+            $name = trim((string) ($row['customer_name'] ?? ''));
+            $city = trim((string) ($row['city'] ?? ''));
+            if ($name === '' && $city === '') {
+                continue;
+            }
+            if ($name === '') {
+                $row['customer_name'] = 'Client';
+            }
+            if (trim((string) ($row['shipping_address'] ?? '')) === '' && trim((string) ($row['city'] ?? '')) !== '') {
+                $row['shipping_address'] = trim((string) $row['city']);
+            }
+            $out[] = $row;
+        }
+        $this->rows = array_values($out);
+
+        return $this->dedupeRowsByPhone();
+    }
+
+    /**
+     * Keep the first row per normalized phone; rows with an empty phone are never treated as duplicates of each other.
+     *
+     * @return int Number of rows removed as duplicates
+     */
+    private function dedupeRowsByPhone(): int
+    {
+        $seen = [];
+        $out = [];
+        $removed = 0;
+
+        foreach ($this->rows as $row) {
+            $key = $this->normalizedPhoneDedupeKey((string) ($row['customer_phone'] ?? ''));
+            if ($key === '') {
+                $out[] = $row;
+
+                continue;
+            }
+            if (isset($seen[$key])) {
+                $removed++;
+
+                continue;
+            }
+            $seen[$key] = true;
+            $out[] = $row;
+        }
+
+        $this->rows = array_values($out);
+
+        return $removed;
+    }
+
+    /**
+     * Normalize phone for duplicate detection (Morocco-friendly: 212… vs 0…).
+     */
+    private function normalizedPhoneDedupeKey(string $phone): string
+    {
+        $digits = preg_replace('/\D+/', '', $phone) ?? '';
+        if ($digits === '') {
+            return '';
+        }
+
+        if (str_starts_with($digits, '212') && strlen($digits) > 3) {
+            $digits = '0'.substr($digits, 3);
+        }
+
+        return $digits;
     }
 
     private function flashValidationSummary(ValidationException $e): void
@@ -358,6 +598,9 @@ class ImportOrdersCsv extends Page
 
         $qty = $pick($row, ['quantity', 'qty', 'count']);
         $out['quantity'] = $qty !== '' && is_numeric($qty) ? (string) max(1, min(999, (int) $qty)) : ($out['quantity'] ?? '1');
+
+        $out['_import_sku'] = $row['_import_sku'] ?? '';
+        $out['_import_price'] = $row['_import_price'] ?? '';
 
         return $out;
     }

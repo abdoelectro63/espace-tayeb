@@ -1,5 +1,5 @@
 <x-filament-panels::page>
-    <div class="space-y-6" dir="rtl">
+    <div class="col-span-full w-full min-w-0 max-w-none space-y-6" dir="rtl">
         @if ($step === 1)
             <x-filament::section>
                 <x-slot name="heading">الخطوة 1 — رفع ملف CSV</x-slot>
@@ -44,86 +44,112 @@
                     </x-filament::section>
                 @endif
 
-                <x-filament::section>
+                <x-filament::section :contained="false" class="col-span-full w-full min-w-0 max-w-none [&_.fi-section-content]:!w-full [&_.fi-section-content-ctn]:!w-full">
                     <x-slot name="heading">الخطوة 2 — مطابقة المنتجات والمتغيرات</x-slot>
                     <x-slot name="description">
-                        عدّل بيانات كل طلب في الجدول؛ الحقول الفارغة الإلزامية يجب تعبئتها قبل الإنهاء. اختر المنتج <strong>مرة واحدة</strong> لجميع الطلبات (مع بحث)، ثم اضبط <strong>النوع</strong> لكل صف إن لزم.
+                        الصفوف بلا <strong>اسم</strong> ولا <strong>مدينة</strong> في الملف تُستبعد تلقائياً. إن وُجدت مدينة دون اسم يُعرَض <strong>Client</strong>؛ إن وُجدت مدينة دون عنوان يُنسَخ العنوان من المدينة. اختر المنتج الموحّد (قائمة Filament مع بحث) لتعيين النوع لكل الصفوف.
                     </x-slot>
 
-                    <div class="mb-6 rounded-xl border border-amber-200/80 bg-amber-50/90 p-4 dark:border-amber-500/30 dark:bg-amber-950/40">
-                        <label class="block text-sm font-semibold text-gray-900 dark:text-white">المنتج الموحّد لجميع الطلبات</label>
+                    <div class="flex w-full min-w-0 flex-col gap-8">
+                    <div class="w-full rounded-xl border border-amber-200/80 bg-amber-50/90 p-4 dark:border-amber-500/30 dark:bg-amber-950/40">
+                        <p class="text-sm font-semibold text-gray-900 dark:text-white">المنتج الموحّد لجميع الطلبات</p>
                         <p class="mt-1 text-xs text-gray-600 dark:text-gray-400">
-                            يُطبَّق على كل الصفوف؛ تغيير المنتج يعيد تعيين النوع الافتراضي لكل الصفوف (يمكنك تعديل النوع لكل صف بعد ذلك).
+                            يُطبَّق على كل الصفوف؛ عند التغيير يُحدَّث النوع الافتراضي لكل الصفوف.
                         </p>
-                        <div class="mt-3 max-w-2xl">
-                            <x-csv-import.searchable-select
-                                :options="$this->productOptionsForJs"
-                                placeholder="— اختر المنتج —"
-                                search-placeholder="ابحث بالاسم أو الرمز…"
-                                entangle-key="syncProductId"
-                            />
+                        <div
+                            class="import-product-form-ctn mt-3 w-full max-w-none min-w-0 [&_.fi-grid-col]:!max-w-none [&_.fi-sc]:w-full [&_.fi-fo-field]:w-full [&_.fi-fo-field-content-col]:min-w-0 [&_.fi-fo-field-content-col]:max-w-full [&_.fi-fo-select-wrp]:w-full [&_.fi-input-wrp]:w-full [&_.fi-fo-select]:w-full"
+                        >
+                            {!! $this->getSchema('importProductForm')?->toHtml() ?? '' !!}
                         </div>
                         @error('syncProductId')
                             <p class="mt-2 text-sm text-danger-600 dark:text-danger-400">{{ $message }}</p>
                         @enderror
                     </div>
 
-                    <div
-                        @class([
-                            'fi-ta-ctn overflow-hidden rounded-xl bg-white shadow-sm ring-1 ring-gray-950/5 dark:bg-white/5 dark:ring-white/10',
-                        ])
-                    >
-                        <div class="fi-ta-content relative overflow-x-auto dark:border-white/10">
-                            <table
-                                class="fi-ta-table w-full table-auto divide-y divide-gray-200 dark:divide-white/5"
-                            >
-                                <thead class="divide-y divide-gray-200 dark:divide-white/5">
-                                    <tr class="bg-gray-50 dark:bg-white/5">
-                                        <th class="fi-ta-header-cell px-3 py-3 text-center text-sm font-semibold text-gray-950 dark:text-white w-12">#</th>
-                                        <th class="fi-ta-header-cell px-3 py-3 text-start text-sm font-semibold text-gray-950 dark:text-white min-w-[8rem]">الزبون <span class="text-danger-600">*</span></th>
-                                        <th class="fi-ta-header-cell px-3 py-3 text-start text-sm font-semibold text-gray-950 dark:text-white min-w-[7rem]">الهاتف <span class="text-danger-600">*</span></th>
-                                        <th class="fi-ta-header-cell px-3 py-3 text-start text-sm font-semibold text-gray-950 dark:text-white min-w-[6rem]">المدينة <span class="text-danger-600">*</span></th>
-                                        <th class="fi-ta-header-cell px-3 py-3 text-start text-sm font-semibold text-gray-950 dark:text-white min-w-[12rem]">العنوان <span class="text-danger-600">*</span></th>
-                                        <th class="fi-ta-header-cell px-3 py-3 text-start text-sm font-semibold text-gray-700 dark:text-gray-300 min-w-[8rem]">SKU / متغير (CSV)</th>
-                                        <th class="fi-ta-header-cell px-3 py-3 text-start text-sm font-semibold text-gray-950 dark:text-white w-24">الكمية <span class="text-danger-600">*</span></th>
-                                        <th class="fi-ta-header-cell px-3 py-3 text-start text-sm font-semibold text-gray-950 dark:text-white min-w-[14rem]">
-                                            النوع
-                                            @if ($syncProd && $syncProd->variations->isNotEmpty())
-                                                <span class="text-danger-600">*</span>
-                                            @endif
-                                        </th>
-                                    </tr>
-                                </thead>
-                                <tbody class="divide-y divide-gray-200 dark:divide-white/5">
-                                    @foreach ($rows as $index => $row)
-                                        <tr wire:key="import-row-{{ $index }}" class="fi-ta-row">
-                                            <td class="fi-ta-cell px-3 py-2 text-center text-xs text-gray-500 dark:text-gray-400">
+                    <div class="fi-ta-ctn fi-ta-ctn-with-header mt-10 w-full min-w-0">
+                        <div class="fi-ta-main">
+                            <div class="fi-ta-header-ctn">
+                                <div class="fi-ta-header">
+                                    <div>
+                                        <h3 class="fi-ta-header-heading">معاينة الطلبات</h3>
+                                        <p class="fi-ta-header-description">
+                                            راجع الصفوف قبل الاستيراد.
+                                            <span class="font-medium text-gray-950 dark:text-white">
+                                                {{ count($rows) }}
+                                                {{ count($rows) === 1 ? 'صف' : 'صفوف' }}
+                                            </span>
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="fi-ta-content-ctn fi-fixed-positioning-context">
+                                <div class="fi-ta-content">
+                                    <table
+                                        class="fi-ta-table w-full min-w-full !table-fixed"
+                                        style="table-layout: fixed; width: 100%"
+                                    >
+                                        <colgroup>
+                                            <col style="width: 4%" />
+                                            <col style="width: 15%" />
+                                            <col style="width: 13%" />
+                                            <col style="width: 11%" />
+                                            <col style="width: 32%" />
+                                            <col style="width: 8%" />
+                                            <col style="width: 17%" />
+                                        </colgroup>
+                                        <thead>
+                                            <tr>
+                                                <th class="fi-ta-header-cell text-center">#</th>
+                                                <th class="fi-ta-header-cell">الاسم <span class="text-danger-600">*</span></th>
+                                                <th class="fi-ta-header-cell">الهاتف <span class="text-danger-600">*</span></th>
+                                                <th class="fi-ta-header-cell">المدينة <span class="text-danger-600">*</span></th>
+                                                <th class="fi-ta-header-cell">العنوان <span class="text-danger-600">*</span></th>
+                                                <th class="fi-ta-header-cell text-gray-600 dark:text-gray-400">مرجع CSV</th>
+                                                <th class="fi-ta-header-cell">
+                                                    النوع
+                                                    @if ($syncProd && $syncProd->variations->isNotEmpty())
+                                                        <span class="text-danger-600">*</span>
+                                                    @endif
+                                                </th>
+                                            </tr>
+                                        </thead>
+                                        <tbody class="divide-y divide-gray-200 dark:divide-white/5">
+                                            @foreach ($rows as $index => $row)
+                                        <tr
+                                            wire:key="import-row-{{ $index }}"
+                                            @class([
+                                                'fi-ta-row [@media(hover:hover)]:hover:bg-gray-50/80 dark:[@media(hover:hover)]:hover:bg-white/5',
+                                                'fi-striped' => $loop->even,
+                                            ])
+                                        >
+                                            <td class="fi-ta-cell fi-vertical-align-start min-w-0 px-3 py-3 text-center text-xs text-gray-500 dark:text-gray-400 sm:first-of-type:ps-6">
                                                 {{ $index + 1 }}
                                             </td>
-                                            <td class="fi-ta-cell px-3 py-2 align-top">
+                                            <td class="fi-ta-cell fi-vertical-align-start min-w-0 px-3 py-3 align-top">
                                                 <input
                                                     type="text"
                                                     wire:model.blur="rows.{{ $index }}.customer_name"
-                                                    class="fi-input block w-full min-w-[7rem] rounded-lg border bg-white px-2 py-1.5 text-sm dark:bg-white/5 @error('rows.'.$index.'.customer_name') border-danger-500 ring-1 ring-danger-500 @else border-gray-300 dark:border-white/10 @enderror"
+                                                    class="fi-input block w-full min-w-0 rounded-lg border bg-white px-2 py-1.5 text-sm dark:bg-white/5 @error('rows.'.$index.'.customer_name') border-danger-500 ring-1 ring-danger-500 @else border-gray-300 dark:border-white/10 @enderror"
                                                     autocomplete="name"
                                                 />
                                                 @error('rows.'.$index.'.customer_name')
                                                     <p class="mt-0.5 text-xs text-danger-600 dark:text-danger-400">{{ $message }}</p>
                                                 @enderror
                                             </td>
-                                            <td class="fi-ta-cell px-3 py-2 align-top">
+                                            <td class="fi-ta-cell fi-vertical-align-start min-w-0 px-3 py-3 align-top">
                                                 <input
                                                     type="text"
                                                     dir="ltr"
                                                     wire:model.blur="rows.{{ $index }}.customer_phone"
-                                                    class="fi-input block w-full min-w-[6rem] rounded-lg border bg-white px-2 py-1.5 text-sm dark:bg-white/5 @error('rows.'.$index.'.customer_phone') border-danger-500 ring-1 ring-danger-500 @else border-gray-300 dark:border-white/10 @enderror"
+                                                    class="fi-input block w-full min-w-0 rounded-lg border bg-white px-2 py-1.5 text-sm dark:bg-white/5 @error('rows.'.$index.'.customer_phone') border-danger-500 ring-1 ring-danger-500 @else border-gray-300 dark:border-white/10 @enderror"
                                                     autocomplete="tel"
                                                 />
                                                 @error('rows.'.$index.'.customer_phone')
                                                     <p class="mt-0.5 text-xs text-danger-600 dark:text-danger-400">{{ $message }}</p>
                                                 @enderror
                                             </td>
-                                            <td class="fi-ta-cell px-3 py-2 align-top">
+                                            <td class="fi-ta-cell fi-vertical-align-start min-w-0 px-3 py-3 align-top">
                                                 <input
                                                     type="text"
                                                     wire:model.blur="rows.{{ $index }}.city"
@@ -133,7 +159,7 @@
                                                     <p class="mt-0.5 text-xs text-danger-600 dark:text-danger-400">{{ $message }}</p>
                                                 @enderror
                                             </td>
-                                            <td class="fi-ta-cell px-3 py-2 align-top">
+                                            <td class="fi-ta-cell fi-vertical-align-start min-w-0 px-3 py-3 align-top">
                                                 <textarea
                                                     wire:model.blur="rows.{{ $index }}.shipping_address"
                                                     rows="2"
@@ -143,25 +169,13 @@
                                                     <p class="mt-0.5 text-xs text-danger-600 dark:text-danger-400">{{ $message }}</p>
                                                 @enderror
                                             </td>
-                                            <td class="fi-ta-cell px-3 py-2 align-top text-xs text-gray-600 dark:text-gray-400">
+                                            <td class="fi-ta-cell fi-vertical-align-start min-w-0 break-words px-3 py-3 align-top text-xs text-gray-500 dark:text-gray-400">
                                                 {{ $row['_raw_sku'] ?? '' }}
                                                 @if (! empty($row['_raw_variation']))
                                                     <br /><span class="text-gray-500 dark:text-gray-500">{{ $row['_raw_variation'] }}</span>
                                                 @endif
                                             </td>
-                                            <td class="fi-ta-cell px-3 py-2 align-top">
-                                                <input
-                                                    type="number"
-                                                    min="1"
-                                                    max="999"
-                                                    wire:model.blur="rows.{{ $index }}.quantity"
-                                                    class="fi-input block w-full max-w-[5.5rem] rounded-lg border bg-white px-2 py-1.5 text-sm dark:bg-white/5 @error('rows.'.$index.'.quantity') border-danger-500 ring-1 ring-danger-500 @else border-gray-300 dark:border-white/10 @enderror"
-                                                />
-                                                @error('rows.'.$index.'.quantity')
-                                                    <p class="mt-0.5 text-xs text-danger-600 dark:text-danger-400">{{ $message }}</p>
-                                                @enderror
-                                            </td>
-                                            <td class="fi-ta-cell min-w-[14rem] px-3 py-2 align-top">
+                                            <td class="fi-ta-cell fi-vertical-align-start min-w-0 px-3 py-3 align-top sm:last-of-type:pe-6">
                                                 @if ($syncProd && $syncProd->variations->isNotEmpty())
                                                     <x-csv-import.searchable-select
                                                         :options="$variationOptions"
@@ -179,10 +193,13 @@
                                                 @endif
                                             </td>
                                         </tr>
-                                    @endforeach
-                                </tbody>
-                            </table>
+                                            @endforeach
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
                         </div>
+                    </div>
                     </div>
 
                     <div class="flex flex-wrap gap-3">
