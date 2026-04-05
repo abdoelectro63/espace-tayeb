@@ -10,6 +10,7 @@ use Filament\Notifications\Notification;
 use Filament\Pages\Page;
 use Illuminate\Support\Collection;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
 use Livewire\WithFileUploads;
 use UnitEnum;
@@ -61,6 +62,7 @@ class ImportOrdersCsv extends Page
             $mapped = $import->buildMappingRows($raw);
             $this->rows = array_map(fn (array $row): array => $this->hydrateEditableFields($row), $mapped);
             $this->syncProductId = $this->guessInitialSyncProductId();
+            $this->hydrateDefaultsAfterCsvParse();
             $this->step = 2;
             $this->csv_file = null;
         } catch (\Throwable $e) {
@@ -77,11 +79,19 @@ class ImportOrdersCsv extends Page
             return;
         }
 
-        $this->validate([
-            'syncProductId' => ['required', 'integer', Rule::exists('products', 'id')->where('is_active', true)],
-        ], [
-            'syncProductId.required' => 'اختر المنتج الموحّد لجميع الطلبات.',
-        ]);
+        $this->normalizeImportPayload();
+
+        try {
+            $this->validate([
+                'syncProductId' => ['required', 'integer', Rule::exists('products', 'id')->where('is_active', true)],
+            ], [
+                'syncProductId.required' => 'اختر المنتج الموحّد لجميع الطلبات.',
+            ]);
+        } catch (ValidationException $e) {
+            $this->flashValidationSummary($e);
+
+            throw $e;
+        }
 
         $pid = (int) $this->syncProductId;
         $product = Product::query()->with('variations')->findOrFail($pid);
@@ -94,7 +104,7 @@ class ImportOrdersCsv extends Page
             $rules["rows.{$i}.customer_phone"] = ['required', 'string', 'max:80'];
             $rules["rows.{$i}.city"] = ['required', 'string', 'max:255'];
             $rules["rows.{$i}.shipping_address"] = ['required', 'string', 'max:2000'];
-            $rules["rows.{$i}.quantity"] = ['required', 'integer', 'min:1', 'max:999'];
+            $rules["rows.{$i}.quantity"] = ['required', 'numeric', 'min:1', 'max:999'];
 
             if ($product->variations->isNotEmpty()) {
                 $rules["rows.{$i}.product_variation_id"] = [
@@ -112,18 +122,31 @@ class ImportOrdersCsv extends Page
             $messages["rows.{$i}.product_variation_id.required"] = 'اختر النوع (الصف '.($i + 1).').';
         }
 
-        $this->validate($rules, $messages);
+        try {
+            $this->validate($rules, $messages);
+        } catch (ValidationException $e) {
+            $this->flashValidationSummary($e);
+
+            throw $e;
+        }
 
         foreach (array_keys($this->rows) as $i) {
             $this->rows[$i]['product_id'] = $pid;
+            $this->rows[$i]['quantity'] = (int) $this->rows[$i]['quantity'];
         }
 
         $count = $import->createOrdersFromMappings($this->rows);
 
-        Notification::make()
-            ->title('تم إنشاء '.$count.' طلبية')
-            ->success()
-            ->send();
+        $done = Notification::make()
+            ->title($count > 0 ? 'تم إنشاء '.$count.' طلبية' : 'لم تُنشأ أي طلبية (تأكد من الحقول الإلزامية في الملف)');
+
+        if ($count > 0) {
+            $done->success();
+        } else {
+            $done->warning();
+        }
+
+        $done->send();
 
         $this->rows = [];
         $this->syncProductId = null;
@@ -140,6 +163,42 @@ class ImportOrdersCsv extends Page
             ->where('is_active', true)
             ->orderBy('name')
             ->get();
+    }
+
+    /**
+     * @return list<array{id: int, label: string}>
+     */
+    public function getProductOptionsForJsProperty(): array
+    {
+        return $this->productsForSelect
+            ->map(fn (Product $p): array => [
+                'id' => $p->id,
+                'label' => $p->name.' ('.$p->code.')',
+            ])
+            ->values()
+            ->all();
+    }
+
+    /**
+     * @return list<array{id: int, label: string}>
+     */
+    public function variationOptionsForProduct(?Product $product): array
+    {
+        if ($product === null || $product->variations->isEmpty()) {
+            return [];
+        }
+
+        return $product->variations
+            ->map(function ($v): array {
+                $sku = filled($v->sku) ? ' ('.$v->sku.')' : '';
+
+                return [
+                    'id' => $v->id,
+                    'label' => $v->label().$sku.' — '.number_format((float) $v->price, 2).' MAD',
+                ];
+            })
+            ->values()
+            ->all();
     }
 
     public function resetImport(): void
@@ -187,6 +246,66 @@ class ImportOrdersCsv extends Page
         $ids = collect($this->rows)->pluck('product_id')->filter(fn ($id): bool => (int) $id > 0)->unique()->values();
 
         return $ids->count() === 1 ? (int) $ids->first() : null;
+    }
+
+    /**
+     * When the unified product is pre-filled from CSV, still assign default variations (updatedSyncProductId does not run).
+     */
+    private function hydrateDefaultsAfterCsvParse(): void
+    {
+        $pid = (int) ($this->syncProductId ?? 0);
+        if ($pid < 1) {
+            return;
+        }
+
+        $product = Product::query()->with('variations')->find($pid);
+        if ($product === null) {
+            return;
+        }
+
+        foreach (array_keys($this->rows) as $i) {
+            $this->rows[$i]['product_id'] = $pid;
+            if ($product->variations->isNotEmpty()) {
+                $current = $this->rows[$i]['product_variation_id'] ?? null;
+                $currentInt = is_numeric($current) ? (int) $current : 0;
+                $valid = $currentInt > 0 && $product->variations->contains('id', $currentInt);
+                if (! $valid) {
+                    $this->rows[$i]['product_variation_id'] = $product->getDefaultVariation()?->id;
+                }
+            } else {
+                $this->rows[$i]['product_variation_id'] = null;
+            }
+        }
+    }
+
+    private function normalizeImportPayload(): void
+    {
+        if ($this->syncProductId === '' || $this->syncProductId === '0') {
+            $this->syncProductId = null;
+        }
+
+        foreach (array_keys($this->rows) as $i) {
+            $q = $this->rows[$i]['quantity'] ?? '1';
+            $this->rows[$i]['quantity'] = is_numeric($q) ? (string) max(1, min(999, (int) $q)) : '1';
+            $v = $this->rows[$i]['product_variation_id'] ?? null;
+            if ($v === '') {
+                $this->rows[$i]['product_variation_id'] = null;
+            }
+        }
+    }
+
+    private function flashValidationSummary(ValidationException $e): void
+    {
+        $first = collect($e->errors())->flatten()->first();
+
+        if (filled($first)) {
+            Notification::make()
+                ->title('تعذر إكمال الاستيراد')
+                ->body($first)
+                ->danger()
+                ->persistent()
+                ->send();
+        }
     }
 
     /**
