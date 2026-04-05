@@ -83,119 +83,131 @@
                                 </div>
                             </div>
 
-                            <div class="fi-ta-content-ctn fi-fixed-positioning-context">
-                                <div class="fi-ta-content">
+                            <div class="import-csv-table-scope fi-ta-content-ctn fi-fixed-positioning-context">
+                                <div class="fi-ta-content !gap-0">
+                                    {{-- No fi-ta-table: Filament applies gray thead/tbody + divide-y on .fi-ta-table --}}
+                                    <div class="import-csv-table-wrap w-full overflow-x-auto rounded-xl bg-white shadow-sm ring-1 ring-gray-950/5 dark:bg-gray-950 dark:ring-white/10">
                                     <table
-                                        class="fi-ta-table w-full min-w-full !table-fixed"
+                                        class="import-csv-table import-csv-table-modern w-full min-w-[56rem] !table-fixed text-start"
                                         style="table-layout: fixed; width: 100%"
                                     >
                                         <colgroup>
-                                            <col style="width: 4%" />
-                                            <col style="width: 15%" />
-                                            <col style="width: 13%" />
-                                            <col style="width: 11%" />
-                                            <col style="width: 32%" />
-                                            <col style="width: 8%" />
-                                            <col style="width: 17%" />
+                                            <col style="width: 16.666%" />
+                                            <col style="width: 16.666%" />
+                                            <col style="width: 16.666%" />
+                                            <col style="width: 16.666%" />
+                                            <col style="width: 16.666%" />
+                                            <col style="width: 16.67%" />
                                         </colgroup>
                                         <thead>
-                                            <tr>
-                                                <th class="fi-ta-header-cell text-center">#</th>
-                                                <th class="fi-ta-header-cell">الاسم <span class="text-danger-600">*</span></th>
-                                                <th class="fi-ta-header-cell">الهاتف <span class="text-danger-600">*</span></th>
-                                                <th class="fi-ta-header-cell">المدينة <span class="text-danger-600">*</span></th>
-                                                <th class="fi-ta-header-cell">العنوان <span class="text-danger-600">*</span></th>
-                                                <th class="fi-ta-header-cell text-gray-600 dark:text-gray-400">مرجع CSV</th>
-                                                <th class="fi-ta-header-cell">
-                                                    النوع
-                                                    @if ($syncProd && $syncProd->variations->isNotEmpty())
-                                                        <span class="text-danger-600">*</span>
-                                                    @endif
+                                            <tr class="align-top">
+                                                <th class="fi-ta-header-cell border-0 border-b border-gray-200 px-5 py-4 text-center text-xs font-bold tracking-wide !text-gray-500 dark:border-white/10 dark:!text-gray-400 sm:first-of-type:ps-8">#</th>
+                                                <th class="fi-ta-header-cell border-0 border-b border-gray-200 px-5 py-4 text-start text-xs font-bold tracking-wide !text-gray-500 dark:border-white/10 dark:!text-gray-400">
+                                                    الاسم <span class="text-danger-600">*</span>
+                                                </th>
+                                                <th class="fi-ta-header-cell border-0 border-b border-gray-200 px-5 py-4 text-start text-xs font-bold tracking-wide !text-gray-500 dark:border-white/10 dark:!text-gray-400 whitespace-nowrap">
+                                                    الهاتف <span class="text-danger-600">*</span>
+                                                </th>
+                                                <th class="fi-ta-header-cell border-0 border-b border-gray-200 px-5 py-4 text-start text-xs font-bold tracking-wide !text-gray-500 dark:border-white/10 dark:!text-gray-400">
+                                                    المدينة <span class="text-danger-600">*</span>
+                                                </th>
+                                                <th class="fi-ta-header-cell border-0 border-b border-gray-200 px-5 py-4 text-start text-xs font-bold tracking-wide !text-gray-500 dark:border-white/10 dark:!text-gray-400">
+                                                    العنوان <span class="text-danger-600">*</span>
+                                                </th>
+                                                <th class="fi-ta-header-cell border-0 border-b border-gray-200 px-5 py-4 text-start text-xs font-bold tracking-wide !text-gray-500 dark:border-white/10 dark:!text-gray-400 sm:last-of-type:pe-8">
+                                                    <span class="block leading-snug">
+                                                        مرجع CSV والنوع
+                                                        @if ($syncProd && $syncProd->variations->isNotEmpty())
+                                                            <span class="text-danger-600">*</span>
+                                                        @endif
+                                                    </span>
                                                 </th>
                                             </tr>
                                         </thead>
-                                        <tbody class="divide-y divide-gray-200 dark:divide-white/5">
+                                        <tbody>
                                             @foreach ($rows as $index => $row)
-                                        <tr
-                                            wire:key="import-row-{{ $index }}"
-                                            @class([
-                                                'fi-ta-row [@media(hover:hover)]:hover:bg-gray-50/80 dark:[@media(hover:hover)]:hover:bg-white/5',
-                                                'fi-striped' => $loop->even,
-                                            ])
-                                        >
-                                            <td class="fi-ta-cell fi-vertical-align-start min-w-0 px-3 py-3 text-center text-xs text-gray-500 dark:text-gray-400 sm:first-of-type:ps-6">
-                                                {{ $index + 1 }}
-                                            </td>
-                                            <td class="fi-ta-cell fi-vertical-align-start min-w-0 px-3 py-3 align-top">
-                                                <input
-                                                    type="text"
-                                                    wire:model.blur="rows.{{ $index }}.customer_name"
-                                                    class="fi-input block w-full min-w-0 rounded-lg border bg-white px-2 py-1.5 text-sm dark:bg-white/5 @error('rows.'.$index.'.customer_name') border-danger-500 ring-1 ring-danger-500 @else border-gray-300 dark:border-white/10 @enderror"
-                                                    autocomplete="name"
-                                                />
-                                                @error('rows.'.$index.'.customer_name')
-                                                    <p class="mt-0.5 text-xs text-danger-600 dark:text-danger-400">{{ $message }}</p>
-                                                @enderror
-                                            </td>
-                                            <td class="fi-ta-cell fi-vertical-align-start min-w-0 px-3 py-3 align-top">
-                                                <input
-                                                    type="text"
-                                                    dir="ltr"
-                                                    wire:model.blur="rows.{{ $index }}.customer_phone"
-                                                    class="fi-input block w-full min-w-0 rounded-lg border bg-white px-2 py-1.5 text-sm dark:bg-white/5 @error('rows.'.$index.'.customer_phone') border-danger-500 ring-1 ring-danger-500 @else border-gray-300 dark:border-white/10 @enderror"
-                                                    autocomplete="tel"
-                                                />
-                                                @error('rows.'.$index.'.customer_phone')
-                                                    <p class="mt-0.5 text-xs text-danger-600 dark:text-danger-400">{{ $message }}</p>
-                                                @enderror
-                                            </td>
-                                            <td class="fi-ta-cell fi-vertical-align-start min-w-0 px-3 py-3 align-top">
-                                                <input
-                                                    type="text"
-                                                    wire:model.blur="rows.{{ $index }}.city"
-                                                    class="fi-input block w-full rounded-lg border bg-white px-2 py-1.5 text-sm dark:bg-white/5 @error('rows.'.$index.'.city') border-danger-500 ring-1 ring-danger-500 @else border-gray-300 dark:border-white/10 @enderror"
-                                                />
-                                                @error('rows.'.$index.'.city')
-                                                    <p class="mt-0.5 text-xs text-danger-600 dark:text-danger-400">{{ $message }}</p>
-                                                @enderror
-                                            </td>
-                                            <td class="fi-ta-cell fi-vertical-align-start min-w-0 px-3 py-3 align-top">
-                                                <textarea
-                                                    wire:model.blur="rows.{{ $index }}.shipping_address"
-                                                    rows="2"
-                                                    class="fi-input block w-full rounded-lg border bg-white px-2 py-1.5 text-sm dark:bg-white/5 @error('rows.'.$index.'.shipping_address') border-danger-500 ring-1 ring-danger-500 @else border-gray-300 dark:border-white/10 @enderror"
-                                                ></textarea>
-                                                @error('rows.'.$index.'.shipping_address')
-                                                    <p class="mt-0.5 text-xs text-danger-600 dark:text-danger-400">{{ $message }}</p>
-                                                @enderror
-                                            </td>
-                                            <td class="fi-ta-cell fi-vertical-align-start min-w-0 break-words px-3 py-3 align-top text-xs text-gray-500 dark:text-gray-400">
-                                                {{ $row['_raw_sku'] ?? '' }}
-                                                @if (! empty($row['_raw_variation']))
-                                                    <br /><span class="text-gray-500 dark:text-gray-500">{{ $row['_raw_variation'] }}</span>
-                                                @endif
-                                            </td>
-                                            <td class="fi-ta-cell fi-vertical-align-start min-w-0 px-3 py-3 align-top sm:last-of-type:pe-6">
-                                                @if ($syncProd && $syncProd->variations->isNotEmpty())
-                                                    <x-csv-import.searchable-select
-                                                        :options="$variationOptions"
-                                                        placeholder="— اختر النوع —"
-                                                        search-placeholder="ابحث عن النوع…"
-                                                        :entangle-key="'rows.'.$index.'.product_variation_id'"
-                                                    />
-                                                    @error('rows.'.$index.'.product_variation_id')
-                                                        <p class="mt-1 text-xs text-danger-600 dark:text-danger-400">{{ $message }}</p>
-                                                    @enderror
-                                                @elseif ($syncProd)
-                                                    <span class="text-xs text-gray-500 dark:text-gray-400">بدون متغيرات</span>
-                                                @else
-                                                    <span class="text-xs text-gray-400 dark:text-gray-500">اختر المنتج أعلاه</span>
-                                                @endif
-                                            </td>
-                                        </tr>
+                                                @php
+                                                    $csvRefFull = trim(collect([$row['_raw_sku'] ?? '', $row['_raw_variation'] ?? ''])->filter()->implode(' · '));
+                                                @endphp
+                                                <tr
+                                                    wire:key="import-row-{{ $index }}"
+                                                    class="import-csv-tr align-top transition-colors hover:bg-gray-50/70 dark:hover:bg-white/[0.03]"
+                                                >
+                                                    <td class="fi-ta-cell min-w-0 max-w-full border-0 border-b border-gray-100 px-5 py-5 text-center text-sm tabular-nums text-gray-400 align-top dark:border-white/5 sm:first-of-type:ps-8">
+                                                        {{ $index + 1 }}
+                                                    </td>
+                                                    <td class="fi-ta-cell min-w-0 max-w-full border-0 border-b border-gray-100 px-5 py-5 align-top dark:border-white/5">
+                                                        <input
+                                                            type="text"
+                                                            wire:model.blur="rows.{{ $index }}.customer_name"
+                                                            class="fi-input box-border h-9 w-full min-w-0 max-w-full rounded-md border bg-white px-2 py-1 text-sm font-medium leading-none text-gray-950 dark:bg-white/5 dark:text-white @error('rows.'.$index.'.customer_name') border-danger-500 ring-1 ring-danger-500 @else border-gray-200 dark:border-white/10 @enderror"
+                                                            autocomplete="name"
+                                                        />
+                                                        @error('rows.'.$index.'.customer_name')
+                                                            <p class="mt-0.5 line-clamp-2 text-[10px] text-danger-600 dark:text-danger-400">{{ $message }}</p>
+                                                        @enderror
+                                                    </td>
+                                                    <td class="fi-ta-cell min-w-0 max-w-full border-0 border-b border-gray-100 px-5 py-5 align-top dark:border-white/5">
+                                                        <input
+                                                            type="text"
+                                                            dir="ltr"
+                                                            wire:model.blur="rows.{{ $index }}.customer_phone"
+                                                            class="fi-input box-border h-9 w-full min-w-0 max-w-full rounded-md border bg-white px-2 py-1 font-mono text-sm leading-none text-gray-600 dark:bg-white/5 dark:text-gray-300 @error('rows.'.$index.'.customer_phone') border-danger-500 ring-1 ring-danger-500 @else border-gray-200 dark:border-white/10 @enderror"
+                                                            autocomplete="tel"
+                                                        />
+                                                        @error('rows.'.$index.'.customer_phone')
+                                                            <p class="mt-0.5 line-clamp-2 text-[10px] text-danger-600 dark:text-danger-400">{{ $message }}</p>
+                                                        @enderror
+                                                    </td>
+                                                    <td class="fi-ta-cell min-w-0 max-w-full border-0 border-b border-gray-100 px-5 py-5 align-top dark:border-white/5">
+                                                        <input
+                                                            type="text"
+                                                            wire:model.blur="rows.{{ $index }}.city"
+                                                            class="fi-input box-border h-9 w-full min-w-0 max-w-full rounded-md border bg-white px-2 py-1 text-sm leading-none text-gray-600 dark:bg-white/5 dark:text-gray-300 @error('rows.'.$index.'.city') border-danger-500 ring-1 ring-danger-500 @else border-gray-200 dark:border-white/10 @enderror"
+                                                        />
+                                                        @error('rows.'.$index.'.city')
+                                                            <p class="mt-0.5 line-clamp-2 text-[10px] text-danger-600 dark:text-danger-400">{{ $message }}</p>
+                                                        @enderror
+                                                    </td>
+                                                    <td class="fi-ta-cell min-w-0 max-w-full border-0 border-b border-gray-100 px-5 py-5 align-top dark:border-white/5">
+                                                        <textarea
+                                                            wire:model.blur="rows.{{ $index }}.shipping_address"
+                                                            rows="2"
+                                                            style="resize: none"
+                                                            class="fi-input import-csv-address-field box-border max-h-[5rem] min-h-[2.25rem] w-full min-w-0 max-w-full resize-none overflow-y-auto rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm leading-snug text-gray-600 break-words dark:border-white/10 dark:bg-white/5 dark:text-gray-300 @error('rows.'.$index.'.shipping_address') border-danger-500 ring-1 ring-danger-500 @enderror"
+                                                        ></textarea>
+                                                        @error('rows.'.$index.'.shipping_address')
+                                                            <p class="mt-0.5 line-clamp-2 text-[10px] text-danger-600 dark:text-danger-400">{{ $message }}</p>
+                                                        @enderror
+                                                    </td>
+                                                    <td class="fi-ta-cell min-w-0 max-w-full border-0 border-b border-gray-100 px-5 py-5 align-top dark:border-white/5 sm:last-of-type:pe-8">
+                                                        <div class="flex w-full min-w-0 max-w-full flex-col gap-2.5">
+                                                            <p
+                                                                class="break-words text-start text-sm leading-relaxed text-gray-600 dark:text-gray-300"
+                                                                @if ($csvRefFull !== '') title="{{ $csvRefFull }}" @endif
+                                                            >
+                                                                {{ $csvRefFull !== '' ? $csvRefFull : '—' }}
+                                                            </p>
+                                                            @if ($syncProd && $syncProd->variations->isNotEmpty())
+                                                                <x-csv-import.searchable-select
+                                                                    wire:key="import-var-{{ $index }}-{{ $syncProductId }}"
+                                                                    compact
+                                                                    :options="$variationOptions"
+                                                                    placeholder="—"
+                                                                    search-placeholder="بحث…"
+                                                                    :entangle-key="'rows.'.$index.'.product_variation_id'"
+                                                                />
+                                                                @error('rows.'.$index.'.product_variation_id')
+                                                                    <p class="mt-1 line-clamp-2 text-xs text-danger-600 dark:text-danger-400">{{ $message }}</p>
+                                                                @enderror
+                                                            @endif
+                                                        </div>
+                                                    </td>
+                                                </tr>
                                             @endforeach
                                         </tbody>
                                     </table>
+                                    </div>
                                 </div>
                             </div>
                         </div>

@@ -287,6 +287,7 @@ class ImportOrdersCsv extends Page
     public function updatedSyncProductId(mixed $value): void
     {
         $this->applyProductSelectionToRows();
+        $this->refreshImportSkuPriceForAllRows();
     }
 
     public function updated(string $name, mixed $value): void
@@ -315,15 +316,25 @@ class ImportOrdersCsv extends Page
         }
 
         $product = Product::query()->with('variations')->find($pid);
-        $defaultVariationId = $product?->getDefaultVariation()?->id;
 
         foreach (array_keys($this->rows) as $i) {
             $this->rows[$i]['product_id'] = $pid;
-            if ($product !== null && $product->variations->isNotEmpty()) {
-                $this->rows[$i]['product_variation_id'] = $defaultVariationId;
-            } else {
+            if ($product === null || $product->variations->isEmpty()) {
                 $this->rows[$i]['product_variation_id'] = null;
+
+                continue;
             }
+
+            if ($product->variations->count() === 1) {
+                $this->rows[$i]['product_variation_id'] = $product->variations->first()->id;
+
+                continue;
+            }
+
+            $current = $this->rows[$i]['product_variation_id'] ?? null;
+            $currentInt = is_numeric($current) ? (int) $current : 0;
+            $stillValid = $currentInt > 0 && $product->variations->contains('id', $currentInt);
+            $this->rows[$i]['product_variation_id'] = $stillValid ? $currentInt : null;
         }
     }
 
@@ -359,13 +370,16 @@ class ImportOrdersCsv extends Page
         $vid = is_numeric($vid) ? (int) $vid : null;
 
         if ($product->variations->isNotEmpty()) {
-            $v = $vid !== null && $vid > 0
+            $v = ($vid !== null && $vid > 0)
                 ? $product->variations->firstWhere('id', $vid)
-                : $product->getDefaultVariation();
-            $this->rows[$index]['_import_sku'] = filled($v?->sku) ? (string) $v->sku : (string) $product->code;
-            $this->rows[$index]['_import_price'] = $v !== null
-                ? number_format((float) $v->price, 2).' MAD'
-                : '';
+                : null;
+            if ($v === null) {
+                $this->rows[$index]['_import_sku'] = '';
+                $this->rows[$index]['_import_price'] = '';
+            } else {
+                $this->rows[$index]['_import_sku'] = filled($v->sku) ? (string) $v->sku : (string) $product->code;
+                $this->rows[$index]['_import_price'] = number_format((float) $v->price, 2).' MAD';
+            }
         } else {
             $this->rows[$index]['_import_sku'] = (string) $product->code;
             $this->rows[$index]['_import_price'] = number_format((float) $product->finalUnitPriceForCart(null), 2).' MAD';
@@ -408,7 +422,9 @@ class ImportOrdersCsv extends Page
                 $currentInt = is_numeric($current) ? (int) $current : 0;
                 $valid = $currentInt > 0 && $product->variations->contains('id', $currentInt);
                 if (! $valid) {
-                    $this->rows[$i]['product_variation_id'] = $product->getDefaultVariation()?->id;
+                    $this->rows[$i]['product_variation_id'] = $product->variations->count() === 1
+                        ? $product->variations->first()->id
+                        : null;
                 }
             } else {
                 $this->rows[$i]['product_variation_id'] = null;

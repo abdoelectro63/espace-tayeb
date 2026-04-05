@@ -4,6 +4,7 @@
     'searchPlaceholder' => 'بحث…',
     /** @var string Livewire property path, e.g. syncProductId or rows.0.product_variation_id */
     'entangleKey' => '',
+    'compact' => false,
 ])
 
 @php
@@ -11,10 +12,16 @@
 @endphp
 
 <div
-    class="relative"
+    @class([
+        'csv-import-searchable-select w-full min-w-0 max-w-full',
+        'csv-import-select-compact' => $compact,
+    ])
     x-data="{
         open: false,
         search: '',
+        panelTop: 0,
+        panelInlineStart: 0,
+        panelWidth: 280,
         selected: @entangle($entangleKey),
         options: @js($options),
         filtered() {
@@ -44,59 +51,112 @@
             this.open = false;
             this.search = '';
         },
+        syncPanel() {
+            if (! this.open) {
+                return;
+            }
+            const t = this.$refs.trigger;
+            if (! t) {
+                return;
+            }
+            const r = t.getBoundingClientRect();
+            this.panelTop = r.bottom + 4;
+            this.panelInlineStart = r.left;
+            this.panelWidth = Math.max(r.width, 200);
+        },
+        toggle() {
+            this.open = ! this.open;
+            if (this.open) {
+                this.$nextTick(() => {
+                    this.syncPanel();
+                    requestAnimationFrame(() => this.syncPanel());
+                });
+            } else {
+                this.search = '';
+            }
+        },
+        windowClick(e) {
+            if (! this.open) {
+                return;
+            }
+            if (this.$refs.trigger?.contains(e.target)) {
+                return;
+            }
+            if (this.$refs.panel?.contains(e.target)) {
+                return;
+            }
+            this.open = false;
+            this.search = '';
+        },
     }"
-    @keydown.escape.window="open = false"
-    @click.outside="open = false"
+    x-on:click.window="windowClick($event)"
+    x-on:keydown.escape.window="open && (open = false, search = '')"
+    x-on:resize.window="syncPanel()"
+    x-on:scroll.window="syncPanel()"
 >
-    <button
-        type="button"
-        @click="open = ! open"
-        @class([
-            'fi-input flex w-full items-center justify-between gap-2 rounded-lg border border-gray-300 bg-white px-3 py-2 text-start text-sm text-gray-950 shadow-sm dark:border-white/10 dark:bg-white/5 dark:text-white',
-        ])
-    >
-        <span class="min-w-0 flex-1 truncate" x-text="activeLabel()"></span>
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="h-5 w-5 shrink-0 text-gray-400" aria-hidden="true">
-            <path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.17l3.71-3.94a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clip-rule="evenodd" />
-        </svg>
-    </button>
-
-    <div
-        x-cloak
-        x-show="open"
-        x-transition
-        class="absolute z-30 mt-1 max-h-72 w-full overflow-hidden rounded-lg border border-gray-200 bg-white shadow-lg dark:border-white/10 dark:bg-gray-900"
-    >
-        <div class="border-b border-gray-100 p-2 dark:border-white/10">
-            <input
-                type="search"
-                x-model="search"
-                :placeholder="@js($searchPlaceholder)"
-                class="fi-input block w-full rounded-md border border-gray-300 bg-white px-2 py-1.5 text-sm dark:border-white/10 dark:bg-white/5"
-                @click.stop
-            />
-        </div>
-        <ul class="max-h-56 overflow-y-auto py-1 text-sm">
-            <li>
+    <x-filament::input.wrapper class="fi-fo-select w-full" :valid="true">
+        <div class="fi-select-input w-full min-w-0">
+            <div class="fi-select-input-ctn relative w-full min-w-0">
                 <button
                     type="button"
-                    class="block w-full px-3 py-2 text-start text-gray-500 hover:bg-gray-50 dark:hover:bg-white/5"
-                    @click="clearSel()"
+                    x-ref="trigger"
+                    x-on:click.stop="toggle()"
+                    @class([
+                        'fi-select-input-btn w-full max-w-full min-w-0 border-0 bg-transparent shadow-none ring-0 focus:ring-0',
+                        '!min-h-8 !py-1 !ps-2.5 !pe-7 !text-xs !leading-5' => $compact,
+                    ])"
                 >
-                    {{ $placeholder }}
+                    <span class="fi-select-input-value-ctn min-w-0">
+                        <span
+                            class="fi-select-input-value-label truncate text-start"
+                            x-text="activeLabel()"
+                        ></span>
+                    </span>
                 </button>
-            </li>
-            <template x-for="o in filtered()" :key="o.id">
+            </div>
+        </div>
+    </x-filament::input.wrapper>
+
+    <template x-teleport="body">
+        <div
+            x-show="open"
+            x-cloak
+            x-ref="panel"
+            class="fi-dropdown-panel fi-width-md max-h-72 overflow-hidden rounded-lg bg-white shadow-lg ring-1 ring-gray-950/5 dark:bg-gray-900 dark:ring-white/10"
+            x-bind:style="'position:fixed;top:' + panelTop + 'px;left:' + panelInlineStart + 'px;width:' + panelWidth + 'px;max-width:min(100vw - 1rem, 24rem);z-index:9999;margin:0'"
+            x-on:click="e => e.stopPropagation()"
+        >
+            <div class="fi-select-input-search-ctn border-b border-gray-100 p-2 dark:border-white/10">
+                <input
+                    type="search"
+                    x-model="search"
+                    :placeholder="@js($searchPlaceholder)"
+                    class="fi-input block w-full rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 text-sm text-gray-950 dark:border-white/10 dark:bg-white/5 dark:text-white"
+                    x-on:click="$event.stopPropagation()"
+                />
+            </div>
+            <ul class="fi-select-input-options-ctn max-h-56 overflow-y-auto py-1 text-sm">
                 <li>
                     <button
                         type="button"
-                        class="block w-full px-3 py-2 text-start hover:bg-primary-50 dark:hover:bg-white/10"
-                        :class="{ 'bg-primary-50 dark:bg-white/10': String(selected) === String(o.id) }"
-                        @click="pick(o.id)"
-                        x-text="o.label"
-                    ></button>
+                        class="fi-select-input-option block w-full px-3 py-2 text-start text-gray-500 hover:bg-gray-50 dark:hover:bg-white/5"
+                        x-on:click="clearSel()"
+                    >
+                        {{ $placeholder }}
+                    </button>
                 </li>
-            </template>
-        </ul>
-    </div>
+                <template x-for="o in filtered()" :key="o.id">
+                    <li>
+                        <button
+                            type="button"
+                            class="fi-select-input-option block w-full whitespace-normal break-words px-3 py-2 text-start text-gray-950 hover:bg-gray-50 dark:text-white dark:hover:bg-white/10"
+                            :class="{ 'bg-gray-50 dark:bg-white/10': String(selected) === String(o.id) }"
+                            x-on:click="pick(o.id)"
+                            x-text="o.label"
+                        ></button>
+                    </li>
+                </template>
+            </ul>
+        </div>
+    </template>
 </div>

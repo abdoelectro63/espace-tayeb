@@ -181,7 +181,9 @@ class OrderImportService
                     if ($variationText !== '' && $product->variations->isNotEmpty()) {
                         $variationId = $this->matchVariation($product, $variationText);
                     } elseif ($product->variations->isNotEmpty()) {
-                        $variationId = $product->getDefaultVariation()?->id;
+                        $variationId = $product->variations->count() === 1
+                            ? $product->variations->first()->id
+                            : null;
                     }
                 } else {
                     $pair = $bySku[Str::lower($sku)] ?? null;
@@ -231,7 +233,7 @@ class OrderImportService
                     }
                 }
                 if ($product->variations->isNotEmpty() && $variationId === null) {
-                    $variationId = $product->getDefaultVariation()?->id;
+                    continue;
                 }
 
                 $qty = (int) ($this->pickFirst($row, ['quantity', 'qty', 'count']) ?: '1');

@@ -91,4 +91,50 @@
         font-weight: 600;
         text-decoration: line-through;
     }
+
+    /*
+     * CSV import preview: Filament .fi-ta-content uses bg-gray-200 + gap-y-px; .fi-ta-table paints gray thead/tbody.
+     * Scoped overrides for a minimal white table (horizontal rules only).
+     */
+    .import-csv-table-scope.fi-ta-content-ctn {
+        background-color: #ffffff !important;
+    }
+
+    .dark .import-csv-table-scope.fi-ta-content-ctn {
+        background-color: rgb(3 7 18) !important;
+    }
+
+    .import-csv-table-scope .fi-ta-content:not(.fi-ta-content-grid) {
+        gap: 0 !important;
+        background-color: #ffffff !important;
+        background-image: none !important;
+    }
+
+    .dark .import-csv-table-scope .fi-ta-content:not(.fi-ta-content-grid) {
+        background-color: rgb(3 7 18) !important;
+    }
+
+    .import-csv-table-modern {
+        border-collapse: collapse;
+    }
+
+    .import-csv-table-modern > thead > tr {
+        background-color: #ffffff !important;
+    }
+
+    .dark .import-csv-table-modern > thead > tr {
+        background-color: rgb(3 7 18) !important;
+    }
+
+    .import-csv-table-modern > tbody > tr {
+        background-color: #ffffff !important;
+    }
+
+    .dark .import-csv-table-modern > tbody > tr {
+        background-color: rgb(3 7 18) !important;
+    }
+
+    .import-csv-table-modern textarea {
+        resize: none !important;
+    }
 }
