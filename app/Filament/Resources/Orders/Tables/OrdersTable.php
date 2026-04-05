@@ -230,7 +230,7 @@ class OrdersTable
                     ->label('New Orders')
                     ->query(fn (Builder $query): Builder => $query->where('status', 'pending')),
                 Tables\Filters\SelectFilter::make('product_id')
-                    ->label('Selected Product')
+                    ->label('منتج محدد')
                     ->options(fn (): array => Product::query()->orderBy('name')->pluck('name', 'id')->toArray())
                     ->searchable()
                     ->preload()
@@ -243,33 +243,75 @@ class OrdersTable
                             ->where('product_id', $data['value']));
                     }),
                 Tables\Filters\Filter::make('product_name')
-                    ->label('Product Name')
+                    ->label('اسم المنتج')
                     ->form([
                         TextInput::make('product_name')
-                            ->label('Product Name'),
+                            ->label('اسم المنتج')
+                            ->placeholder('بحث جزئي في اسم المنتج'),
                     ])
                     ->query(function (Builder $query, array $data): Builder {
-                        if (blank($data['product_name'] ?? null)) {
+                        $term = trim((string) ($data['product_name'] ?? ''));
+                        if ($term === '') {
                             return $query;
                         }
 
                         return $query->whereHas('orderItems.product', fn (Builder $productQuery): Builder => $productQuery
-                            ->where('name', 'like', '%'.$data['product_name'].'%'));
+                            ->where('name', 'like', '%'.$term.'%'));
+                    })
+                    ->indicateUsing(function (array $data): array {
+                        $term = trim((string) ($data['product_name'] ?? ''));
+                        if ($term === '') {
+                            return [];
+                        }
+
+                        return [Indicator::make('منتج: '.$term)];
                     }),
-                Tables\Filters\Filter::make('city_and_name')
-                    ->label('City & Name')
+                Tables\Filters\Filter::make('order_city')
+                    ->label('المدينة')
                     ->form([
-                        TextInput::make('customer_name')
-                            ->label('Customer Name'),
                         TextInput::make('city')
-                            ->label('City'),
+                            ->label('اسم المدينة')
+                            ->placeholder('بحث جزئي'),
                     ])
                     ->query(function (Builder $query, array $data): Builder {
-                        return $query
-                            ->when(filled($data['customer_name'] ?? null), fn (Builder $q): Builder => $q
-                                ->where('customer_name', 'like', '%'.$data['customer_name'].'%'))
-                            ->when(filled($data['city'] ?? null), fn (Builder $q): Builder => $q
-                                ->where('city', 'like', '%'.$data['city'].'%'));
+                        $term = trim((string) ($data['city'] ?? ''));
+                        if ($term === '') {
+                            return $query;
+                        }
+
+                        return $query->where('city', 'like', '%'.$term.'%');
+                    })
+                    ->indicateUsing(function (array $data): array {
+                        $term = trim((string) ($data['city'] ?? ''));
+                        if ($term === '') {
+                            return [];
+                        }
+
+                        return [Indicator::make('مدينة: '.$term)];
+                    }),
+                Tables\Filters\Filter::make('order_phone')
+                    ->label('رقم الهاتف')
+                    ->form([
+                        TextInput::make('phone')
+                            ->label('رقم الهاتف')
+                            ->tel()
+                            ->placeholder('أرقام أو جزء من الرقم'),
+                    ])
+                    ->query(function (Builder $query, array $data): Builder {
+                        $raw = trim((string) ($data['phone'] ?? ''));
+                        if ($raw === '') {
+                            return $query;
+                        }
+
+                        return $query->where('customer_phone', 'like', '%'.$raw.'%');
+                    })
+                    ->indicateUsing(function (array $data): array {
+                        $raw = trim((string) ($data['phone'] ?? ''));
+                        if ($raw === '') {
+                            return [];
+                        }
+
+                        return [Indicator::make('هاتف: '.$raw)];
                     }),
                 Tables\Filters\SelectFilter::make('status')
                     ->options([
