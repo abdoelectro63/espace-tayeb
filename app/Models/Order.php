@@ -79,6 +79,23 @@ class Order extends Model
                 $order->paid_at = null;
             }
         });
+
+        /**
+         * Cancelled orders are moved to the soft-deleted (trash) list in Filament.
+         */
+        static::saved(function (self $order): void {
+            if ($order->trashed() || $order->status !== 'cancelled') {
+                return;
+            }
+
+            $becameCancelled = $order->wasChanged('status')
+                && (string) $order->getOriginal('status') !== 'cancelled';
+            $createdAsCancelled = $order->wasRecentlyCreated;
+
+            if ($becameCancelled || $createdAsCancelled) {
+                $order->deleteQuietly();
+            }
+        });
     }
 
     /**

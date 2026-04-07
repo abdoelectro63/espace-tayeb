@@ -40,7 +40,7 @@ class ListOrders extends ListRecords
                 ->label('طلبيات تحتاج الى تتبع')
                 ->modifyQueryUsing(fn (Builder $query) => $query
                     ->withoutTrashed()
-                    ->whereIn('status', ['no_response', 'cancelled'])),
+                    ->where('status', 'no_response')),
 
             'delivered' => Tab::make('تم التسليم')
                 ->label('الطلبات المسلمة')
