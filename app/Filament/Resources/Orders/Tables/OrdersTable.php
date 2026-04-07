@@ -112,6 +112,7 @@ class OrdersTable
 
                 SelectColumn::make('status')
                     ->label('تغيير الحالة')
+                    ->hidden(fn (): bool => (Livewire::current()?->activeTab ?? null) === 'trash')
                     ->disabled(fn (): bool => (Livewire::current()?->activeTab ?? null) === 'delivered')
                     ->selectablePlaceholder(false)
                     ->rules(['required'])
