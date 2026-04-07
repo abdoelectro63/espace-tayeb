@@ -123,8 +123,6 @@ class OrdersTable
                         'confirmed' => 'تأكيد',
                         'no_response' => 'لا جواب',
                         'cancelled' => 'ملغي',
-                        'shipped' => 'تم الشحن',
-                        'delivered' => 'تم التسليم',
                     ])
                     ->extraInputAttributes(function ($state): array {
                         $state = mb_strtolower(trim((string) $state));
@@ -376,7 +374,7 @@ class OrdersTable
                         ->label('Assign to Shipping Company')
                         ->icon('heroicon-o-truck')
                         ->color('primary')
-                        ->visible(fn (): bool => (Livewire::current()?->activeTab ?? null) === 'pending')
+                        ->visible(fn (): bool => (Livewire::current()?->activeTab ?? null) === 'all')
                         ->form([
                             Select::make('shipping_company_id')
                                 ->label('Select Company')

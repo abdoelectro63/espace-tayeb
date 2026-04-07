@@ -30,11 +30,17 @@ class ListOrders extends ListRecords
     public function getTabs(): array
     {
         return [
-            'all' => Tab::make('الكل')
+            'all' => Tab::make('الطلبات النشطة')
                 ->label('الطلبات النشطة')
                 ->modifyQueryUsing(fn (Builder $query) => $query
                     ->withoutTrashed()
-                    ->whereNotIn('status', ['shipped', 'delivered'])),
+                    ->whereIn('status', ['pending', 'confirmed'])),
+
+            'needs_followup' => Tab::make('طلبيات تحتاج الى تتبع')
+                ->label('طلبيات تحتاج الى تتبع')
+                ->modifyQueryUsing(fn (Builder $query) => $query
+                    ->withoutTrashed()
+                    ->whereIn('status', ['no_response', 'cancelled'])),
 
             'delivered' => Tab::make('تم التسليم')
                 ->label('الطلبات المسلمة')
