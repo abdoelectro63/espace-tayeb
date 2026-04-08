@@ -62,10 +62,14 @@ class Order extends Model
         'shipping_fee', 'delivery_fee', 'shipping_zone',
         'status', 'notes', 'delivery_man_id', 'payment_status', 'paid_at',
         'shipping_company', 'shipping_company_id', 'tracking_number', 'shipping_provider_status',
+        'invoice_status', 'invoiced_at',
+        'invoice_client_company_name', 'invoice_client_ice', 'invoice_client_if', 'invoice_client_rc',
+        'invoice_billing_address',
     ];
 
     protected $casts = [
         'paid_at' => 'datetime',
+        'invoiced_at' => 'datetime',
         'shipping_fee' => 'decimal:2',
         'delivery_fee' => 'decimal:2',
     ];

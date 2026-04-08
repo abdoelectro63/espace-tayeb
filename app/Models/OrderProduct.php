@@ -12,6 +12,7 @@ class OrderProduct extends Model
         'product_variation_id',
         'quantity',
         'unit_price',
+        'invoice_designation',
     ];
 
     public function order()

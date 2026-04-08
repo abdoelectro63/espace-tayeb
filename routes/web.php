@@ -34,6 +34,8 @@ Route::patch('/cart/{product}', [CartController::class, 'update'])->name('store.
 Route::delete('/cart/{product}', [CartController::class, 'destroy'])->name('store.cart.remove');
 
 Route::middleware('auth')->group(function () {
+    Route::get('/invoices/orders/{order}/pdf', [OrderInvoiceController::class, 'pdf'])
+        ->name('invoices.orders.pdf');
     Route::get('/invoices/orders/{order}', [OrderInvoiceController::class, 'show'])
         ->name('invoices.orders.show');
     Route::get('/vitips/orders', [VitipsController::class, 'orders'])
