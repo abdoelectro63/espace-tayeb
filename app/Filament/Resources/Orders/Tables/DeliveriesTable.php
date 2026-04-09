@@ -74,12 +74,12 @@ class DeliveriesTable
                 TextColumn::make('shipping_address')
                     ->label('العنوان')
                     ->wrap()
-                    ->toggleable(isToggledHiddenByDefault: true),
+                    ->searchable(),
 
                 TextColumn::make('deliveryMan.name')
                     ->label('Delivery Man')
                     ->state(fn ($record): string => $record->deliveryMan?->name ?: 'غير معين')
-                    ->hidden(fn ($livewire): bool => ($livewire->activeTab ?? null) === 'shipping_companies')
+                    ->hidden(fn ($livewire): bool => in_array(($livewire->activeTab ?? null), ['pending', 'shipping_companies'], true))
                     ->searchable(),
 
                 TextColumn::make('shipping_company')
@@ -101,7 +101,7 @@ class DeliveriesTable
 
                         return $colors[$state] ?? 'gray';
                     })
-                    ->hidden(fn ($livewire): bool => ($livewire->activeTab ?? null) === 'local_delivery')
+                    ->hidden(fn ($livewire): bool => in_array(($livewire->activeTab ?? null), ['pending', 'local_delivery'], true))
                     ->searchable(),
 
                 TextInputColumn::make('tracking_number')
