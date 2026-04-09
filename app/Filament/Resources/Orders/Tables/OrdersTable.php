@@ -31,13 +31,14 @@ use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
 use Livewire\Livewire;
 
 class OrdersTable
 {
     public static function configure(Table $table): Table
     {
-        return $table
+        $table = $table
             ->modifyQueryUsing(fn (Builder $query) => $query->withTrashed()->with('orderItems.product'))
             ->defaultSort('created_at', 'desc')
             ->checkIfRecordIsSelectableUsing(
@@ -547,5 +548,12 @@ class OrdersTable
                         }),
                 ]),
             ]);
+
+        // Safety net: only enable drag/drop when DB column exists.
+        if (Schema::hasColumn('orders', 'sort_order')) {
+            $table->reorderable('sort_order');
+        }
+
+        return $table;
     }
 }

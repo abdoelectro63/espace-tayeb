@@ -60,6 +60,7 @@ class Order extends Model
         'number', 'customer_name', 'customer_phone',
         'city', 'shipping_address', 'total_price',
         'shipping_fee', 'delivery_fee', 'shipping_zone',
+        'sort_order',
         'status', 'notes', 'delivery_man_id', 'payment_status', 'paid_at',
         'shipping_company', 'shipping_company_id', 'tracking_number', 'shipping_provider_status',
         'invoice_status', 'invoiced_at',
@@ -70,6 +71,7 @@ class Order extends Model
     protected $casts = [
         'paid_at' => 'datetime',
         'invoiced_at' => 'datetime',
+        'sort_order' => 'integer',
         'shipping_fee' => 'decimal:2',
         'delivery_fee' => 'decimal:2',
     ];
