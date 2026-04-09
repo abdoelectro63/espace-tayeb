@@ -4,6 +4,7 @@ use App\Http\Controllers\CartController;
 use App\Http\Controllers\CatalogMediaController;
 use App\Http\Controllers\CheckoutController;
 use App\Http\Controllers\ContactController;
+use App\Http\Controllers\ManualInvoiceController;
 use App\Http\Controllers\OrderInvoiceController;
 use App\Http\Controllers\PageController;
 use App\Http\Controllers\StoreController;
@@ -34,6 +35,10 @@ Route::patch('/cart/{product}', [CartController::class, 'update'])->name('store.
 Route::delete('/cart/{product}', [CartController::class, 'destroy'])->name('store.cart.remove');
 
 Route::middleware('auth')->group(function () {
+    Route::get('/invoices/manual/{manualInvoice}/pdf', [ManualInvoiceController::class, 'pdf'])
+        ->name('invoices.manual.pdf');
+    Route::get('/invoices/manual/{manualInvoice}', [ManualInvoiceController::class, 'show'])
+        ->name('invoices.manual.show');
     Route::get('/invoices/orders/{order}/pdf', [OrderInvoiceController::class, 'pdf'])
         ->name('invoices.orders.pdf');
     Route::get('/invoices/orders/{order}', [OrderInvoiceController::class, 'show'])

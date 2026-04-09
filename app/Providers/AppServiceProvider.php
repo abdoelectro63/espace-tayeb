@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Models\ManualInvoice;
 use App\Models\FooterLogo;
 use App\Models\Menu;
 use App\Models\MenuItem;
@@ -15,6 +16,7 @@ use App\Services\ShoppingCart;
 use App\Settings\FooterSettings;
 use Illuminate\Filesystem\Filesystem;
 use Illuminate\Pagination\Paginator;
+use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
@@ -79,6 +81,10 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        Route::bind('manualInvoice', function (string $value): ManualInvoice {
+            return ManualInvoice::withTrashed()->whereKey($value)->firstOrFail();
+        });
+
         if (config('app.env') === 'production') {
             URL::forceScheme('https');
         }

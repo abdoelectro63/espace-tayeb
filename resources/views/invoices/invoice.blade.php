@@ -2,7 +2,7 @@
 <html lang="fr" dir="ltr">
 <head>
     <meta charset="utf-8">
-    <title>Facture {{ $order->number }}</title>
+    <title>Facture {{ isset($manualInvoice) ? ($manualInvoice->number ?? ('#'.$manualInvoice->id)) : $order->number }}</title>
     <style>
         @page { size: A4; margin: 10px; }
 
@@ -141,7 +141,14 @@
 <body>
 @php
     $sellerName = filled($settings->seller_company_name) ? $settings->seller_company_name : 'Livreno Sarl';
-    $invoiceDate = $order->created_at?->timezone(config('app.timezone'))->format('d/m/Y') ?? '';
+    $isManual = isset($manualInvoice);
+    if ($isManual) {
+        $invoiceNumber = filled($manualInvoice->number) ? $manualInvoice->number : ('#'.$manualInvoice->id);
+        $invoiceDate = $manualInvoice->invoice_date?->timezone(config('app.timezone'))->format('d/m/Y') ?? '';
+    } else {
+        $invoiceNumber = $order->number;
+        $invoiceDate = $order->created_at?->timezone(config('app.timezone'))->format('d/m/Y') ?? '';
+    }
     $total = $amounts['total_ht'];
     $tva = $amounts['tva_amount'];
     $totalTTC = $amounts['total_ttc'];
@@ -157,32 +164,50 @@
                     <td class="header-top" style="padding: 0;">
                         <strong style="font-size: 20px;">{{ $sellerName }}</strong>
                         <h2 style="margin-top: 5px;">FACTURE</h2>
-                        N° : {{ $order->number }}<br>
+                        N° : {{ $invoiceNumber }}<br>
                         Date : {{ $invoiceDate }}
                     </td>
                 </tr>
             </table>
         </td>
 
-        <td width="50%" valign="top"">
+        <td width="50%" valign="top">
             <table class="client-wrap" style="width: 100%; border: 1px solid #000;">
                 <tr>
                     <td style="padding: 5;">
                         <strong>FACTURÉ À</strong><br>
-                        @if(filled($order->invoice_client_company_name))
-                            <strong>{{ $order->invoice_client_company_name }}</strong><br>
-                        @endif
-                        @if(filled($order->invoice_client_ice))
-                            ICE : {{ $order->invoice_client_ice }}<br>
-                        @endif
-                        @if(filled($order->invoice_client_if))
-                            I.F. : {{ $order->invoice_client_if }}<br>
-                        @endif
-                        @if(filled($order->invoice_client_rc))
-                            RC : {{ $order->invoice_client_rc }}<br>
-                        @endif
-                        @if(filled($order->invoice_billing_address))
-                            {!! nl2br(e($order->invoice_billing_address)) !!}
+                        @if($isManual)
+                            @if(filled($manualInvoice->client_company_name))
+                                <strong>{{ $manualInvoice->client_company_name }}</strong><br>
+                            @endif
+                            @if(filled($manualInvoice->client_ice))
+                                ICE : {{ $manualInvoice->client_ice }}<br>
+                            @endif
+                            @if(filled($manualInvoice->client_if))
+                                I.F. : {{ $manualInvoice->client_if }}<br>
+                            @endif
+                            @if(filled($manualInvoice->client_rc))
+                                RC : {{ $manualInvoice->client_rc }}<br>
+                            @endif
+                            @if(filled($manualInvoice->billing_address))
+                                {!! nl2br(e($manualInvoice->billing_address)) !!}
+                            @endif
+                        @else
+                            @if(filled($order->invoice_client_company_name))
+                                <strong>{{ $order->invoice_client_company_name }}</strong><br>
+                            @endif
+                            @if(filled($order->invoice_client_ice))
+                                ICE : {{ $order->invoice_client_ice }}<br>
+                            @endif
+                            @if(filled($order->invoice_client_if))
+                                I.F. : {{ $order->invoice_client_if }}<br>
+                            @endif
+                            @if(filled($order->invoice_client_rc))
+                                RC : {{ $order->invoice_client_rc }}<br>
+                            @endif
+                            @if(filled($order->invoice_billing_address))
+                                {!! nl2br(e($order->invoice_billing_address)) !!}
+                            @endif
                         @endif
                     </td>
                 </tr>
