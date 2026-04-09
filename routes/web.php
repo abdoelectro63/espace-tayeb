@@ -27,6 +27,7 @@ Route::get('/cart', [CartController::class, 'index'])->name('store.cart');
 Route::get('/cart/drawer', [CartController::class, 'drawer'])->name('store.cart.drawer');
 Route::get('/checkout', [CheckoutController::class, 'index'])->name('store.checkout');
 Route::post('/checkout', [CheckoutController::class, 'store'])->name('store.checkout.store');
+Route::get('/checkout/thank-you', [CheckoutController::class, 'thankYou'])->name('store.checkout.thank-you');
 Route::post('/cart', [CartController::class, 'store'])->name('store.cart.add');
 Route::post('/cart/add-bundle', [CartController::class, 'addBundle'])->name('store.cart.add_bundle');
 Route::post('/cart/shipping-zone', [CartController::class, 'setShippingZone'])->name('store.cart.shipping-zone');

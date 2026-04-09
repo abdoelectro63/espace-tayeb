@@ -1,6 +1,7 @@
 <?php
 
 use App\Settings\FooterSettings;
+use App\Settings\TrackingSettings;
 use Spatie\LaravelData\Data;
 use Spatie\LaravelSettings\SettingsCasts\DataCast;
 use Spatie\LaravelSettings\SettingsCasts\DateTimeInterfaceCast;
@@ -16,6 +17,7 @@ return [
      */
     'settings' => [
         FooterSettings::class,
+        TrackingSettings::class,
     ],
 
     /*

@@ -66,6 +66,7 @@ class Order extends Model
         'invoice_status', 'invoiced_at',
         'invoice_client_company_name', 'invoice_client_ice', 'invoice_client_if', 'invoice_client_rc',
         'invoice_billing_address',
+        'checkout_capi_meta_sent_at', 'checkout_capi_tiktok_sent_at',
     ];
 
     protected $casts = [
@@ -74,6 +75,8 @@ class Order extends Model
         'sort_order' => 'integer',
         'shipping_fee' => 'decimal:2',
         'delivery_fee' => 'decimal:2',
+        'checkout_capi_meta_sent_at' => 'datetime',
+        'checkout_capi_tiktok_sent_at' => 'datetime',
     ];
 
     protected static function booted(): void

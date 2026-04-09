@@ -8,6 +8,9 @@ use App\Models\Product;
 use App\Models\ShippingSetting;
 use App\Services\ShippingCalculator;
 use App\Services\ShoppingCart;
+use App\Services\Tracking\FacebookConversionService;
+use App\Services\Tracking\TikTokEventService;
+use App\Support\Tracking\WebsitePurchaseEventId;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -107,9 +110,94 @@ class CheckoutController extends Controller
         $cart->clear();
         $request->session()->forget('shipping_zone');
 
-        return redirect()
-            ->route('store.home')
-            ->with('cart_success', 'تم استلام طلبك. رقم الطلبية: '.$order->number);
+        $request->session()->put('checkout_thank_you_order_id', $order->id);
+
+        return redirect()->route('store.checkout.thank-you');
+    }
+
+    /**
+     * Website checkout completion (thank-you). Use this page for Purchase pixels / server events —
+     * not admin "paid" status.
+     */
+    public function thankYou(Request $request): View|RedirectResponse
+    {
+        $orderId = $request->session()->get('checkout_thank_you_order_id');
+
+        if (! filled($orderId)) {
+            return redirect()->route('store.home');
+        }
+
+        $order = Order::query()
+            ->with(['orderItems.product'])
+            ->find((int) $orderId);
+
+        if ($order === null) {
+            $request->session()->forget('checkout_thank_you_order_id');
+
+            return redirect()->route('store.home');
+        }
+
+        $order->loadMissing('orderItems.product');
+
+        $eventId = WebsitePurchaseEventId::forOrder($order);
+        $clientIp = $request->ip();
+        $userAgent = $request->userAgent();
+
+        if ($order->checkout_capi_meta_sent_at === null) {
+            try {
+                if (app(FacebookConversionService::class)->sendPurchase($order, $eventId, $clientIp, $userAgent)) {
+                    $order->forceFill(['checkout_capi_meta_sent_at' => now()])->saveQuietly();
+                }
+            } catch (\Throwable $e) {
+                report($e);
+            }
+        }
+
+        $order->refresh();
+
+        if ($order->checkout_capi_tiktok_sent_at === null) {
+            try {
+                if (app(TikTokEventService::class)->sendCompletePayment($order, $eventId, $clientIp, $userAgent)) {
+                    $order->forceFill(['checkout_capi_tiktok_sent_at' => now()])->saveQuietly();
+                }
+            } catch (\Throwable $e) {
+                report($e);
+            }
+        }
+
+        $order->refresh();
+
+        $trackingPurchase = null;
+        if (filled(setting('facebook_pixel_id')) || filled(setting('tiktok_pixel_id'))) {
+            $contentIds = $order->orderItems
+                ->pluck('product_id')
+                ->map(fn ($id) => (string) $id)
+                ->filter()
+                ->values()
+                ->all();
+            $contents = [];
+            foreach ($order->orderItems as $line) {
+                $contents[] = [
+                    'content_id' => (string) $line->product_id,
+                    'quantity' => max(1, (int) $line->quantity),
+                    'price' => round((float) $line->unit_price, 2),
+                ];
+            }
+            $trackingPurchase = [
+                'event_id' => $eventId,
+                'value' => round((float) $order->total_price, 2),
+                'currency' => 'MAD',
+                'content_ids' => $contentIds,
+                'contents' => $contents,
+                'fb_pixel' => filled(setting('facebook_pixel_id')),
+                'tt_pixel' => filled(setting('tiktok_pixel_id')),
+            ];
+        }
+
+        return view('store.checkout-thank-you', [
+            'order' => $order,
+            'trackingPurchase' => $trackingPurchase,
+        ]);
     }
 
     private function generateUniqueOrderNumber(): string
