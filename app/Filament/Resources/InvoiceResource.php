@@ -72,7 +72,7 @@ class InvoiceResource extends Resource
 
     public static function canViewAny(): bool
     {
-        return in_array(auth()->user()?->role, ['admin', 'confirmation', 'manager'], true);
+        return auth()->user()?->role === 'admin';
     }
 
     public static function canAccess(): bool
