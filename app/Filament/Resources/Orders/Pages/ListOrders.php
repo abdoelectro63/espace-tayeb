@@ -7,11 +7,18 @@ use App\Filament\Resources\Orders\OrderResource;
 use Filament\Actions;
 use Filament\Resources\Pages\ListRecords;
 use Filament\Schemas\Components\Tabs\Tab;
+use Filament\Support\Enums\Width;
 use Illuminate\Database\Eloquent\Builder;
 
 class ListOrders extends ListRecords
 {
     protected static string $resource = OrderResource::class;
+
+    protected Width|string|null $maxContentWidth = Width::Full;
+
+    protected array $extraBodyAttributes = [
+        'class' => 'orders-index-full-table',
+    ];
 
     protected function getHeaderActions(): array
     {

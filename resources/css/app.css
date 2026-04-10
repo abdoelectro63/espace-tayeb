@@ -137,4 +137,28 @@
     .import-csv-table-modern textarea {
         resize: none !important;
     }
+
+    /*
+     * Orders resource list: use full panel width, drop inner horizontal scroll, allow cell wrap.
+     * (Filament tables use overflow-x-auto on .fi-ta-content-ctn and whitespace-nowrap on tbody by default.)
+     */
+    .fi-body.orders-index-full-table .fi-ta-content-ctn {
+        overflow-x: visible;
+    }
+
+    .fi-body.orders-index-full-table .fi-ta-table > thead,
+    .fi-body.orders-index-full-table .fi-ta-table > tbody {
+        white-space: normal;
+    }
+
+    .fi-body.orders-index-full-table .fi-ta-header-cell,
+    .fi-body.orders-index-full-table .fi-ta-cell {
+        min-width: 0;
+        vertical-align: top;
+    }
+
+    .fi-body.orders-index-full-table .fi-ta-table input,
+    .fi-body.orders-index-full-table .fi-ta-table select {
+        max-width: 100%;
+    }
 }

@@ -54,8 +54,9 @@ class OrdersTable
                 TextColumn::make('created_at')
                     ->label('تاريخ الطلب')
                     ->dateTime('d/m/Y H:i')
-                    ->sortable(),
-                TextColumn::make('customer_name')->label('الزبون')->searchable(),
+                    ->sortable()
+                    ->wrap(),
+                TextColumn::make('customer_name')->label('الزبون')->searchable()->wrap(),
                 TextInputColumn::make('customer_phone')
                     ->label('الهاتف')
                     ->disabled(fn (): bool => (Livewire::current()?->activeTab ?? null) === 'delivered'),
@@ -109,7 +110,8 @@ class OrdersTable
                             'pending', 'en attente', 'انتظار' => 'gray',
                             default => 'gray',
                         };
-                    }),
+                    })
+                    ->wrap(),
 
                 SelectColumn::make('status')
                     ->label('تغيير الحالة')

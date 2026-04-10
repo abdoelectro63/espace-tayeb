@@ -281,7 +281,13 @@ function initAddToCartForms() {
         form.addEventListener('submit', async (e) => {
             e.preventDefault();
 
-            const btn = form.querySelector('button[type="submit"]');
+            const submitter = e.submitter;
+            const btn =
+                submitter &&
+                ((submitter instanceof HTMLButtonElement && submitter.type === 'submit') ||
+                    (submitter instanceof HTMLInputElement && submitter.type === 'submit'))
+                    ? submitter
+                    : form.querySelector('button[type="submit"]');
             const imageUrl = form.getAttribute('data-fly-image') || '';
             const fd = new FormData(form);
 
