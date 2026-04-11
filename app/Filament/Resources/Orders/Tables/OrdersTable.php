@@ -26,7 +26,6 @@ use Filament\Tables;
 use Filament\Tables\Columns\SelectColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Columns\TextInputColumn;
-use Filament\Tables\Columns\ViewColumn;
 use Filament\Tables\Filters\Indicator;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
@@ -52,34 +51,35 @@ class OrdersTable
             )
             // بمجرد تعريف الـ Bulk Actions، ستظهر الـ Checkboxes تلقائياً في الجدول
             ->columns([
-                ViewColumn::make('created_at')
+                TextColumn::make('created_at')
                     ->label('تاريخ الطلب')
-                    ->view('filament.tables.columns.order-date-with-trash')
+                    ->dateTime('d/m/Y H:i')
                     ->sortable()
-                    ->disabledClick()
-                    ->extraAttributes(['class' => 'text-xs']),
+                    ->wrap()
+                    ->grow(false)
+                    ->extraHeaderAttributes(['class' => 'orders-table-col-date'])
+                    ->extraCellAttributes(['class' => 'orders-table-col-date']),
                 TextColumn::make('customer_name')
                     ->label('الزبون')
                     ->searchable()
                     ->wrap()
-                    ->extraAttributes(['class' => 'text-xs']),
+                    ->extraHeaderAttributes(['class' => 'orders-table-col-name'])
+                    ->extraCellAttributes(['class' => 'orders-table-col-name']),
                 TextInputColumn::make('customer_phone')
                     ->label('الهاتف')
                     ->disabled(fn (): bool => (Livewire::current()?->activeTab ?? null) === 'delivered')
-                    ->extraAttributes(['class' => 'text-xs'])
-                    ->extraInputAttributes(['class' => 'text-xs']),
+                    ->extraHeaderAttributes(['class' => 'orders-table-col-phone'])
+                    ->extraCellAttributes(['class' => 'orders-table-col-phone']),
                 TextInputColumn::make('city')
                     ->label('المدينة')
                     ->disabled(fn (): bool => (Livewire::current()?->activeTab ?? null) === 'delivered')
-                    ->extraAttributes(['class' => 'text-xs'])
-                    ->extraInputAttributes(['class' => 'text-xs']),
+                    ->extraHeaderAttributes(['class' => 'orders-table-col-city'])
+                    ->extraCellAttributes(['class' => 'orders-table-col-city']),
                 TextInputColumn::make('shipping_address')
                     ->label('العنوان')
                     ->disabled(fn (): bool => (Livewire::current()?->activeTab ?? null) === 'delivered')
-                    ->extraAttributes(['class' => 'text-xs'])
-                    ->extraCellAttributes(['class' => 'orders-table-col-address'])
-                    ->extraInputAttributes(['class' => 'text-xs'])
-                    ->tooltip(fn (Order $record): ?string => filled($record->shipping_address) ? (string) $record->shipping_address : null),
+                    ->extraHeaderAttributes(['class' => 'orders-table-col-address'])
+                    ->extraCellAttributes(['class' => 'orders-table-col-address']),
                 TextColumn::make('products')
                     ->label('المنتجات')
                     ->state(function ($record): string {
@@ -97,9 +97,7 @@ class OrdersTable
                     })
                     ->badge()
                     ->color(fn (string $state): string => $state === 'عدة منتجات' ? 'warning' : 'gray')
-                    ->wrap()
                     ->grow(false)
-                    ->extraAttributes(['class' => 'text-xs'])
                     ->extraHeaderAttributes(['class' => 'orders-table-col-products'])
                     ->extraCellAttributes(['class' => 'orders-table-col-products'])
                     ->tooltip(function ($record): ?string {
@@ -114,10 +112,13 @@ class OrdersTable
                 TextColumn::make('total_price')
                     ->label('المجموع')
                     ->money('MAD')
-                    ->extraAttributes(['class' => 'text-xs']),
+                    ->grow(false)
+                    ->extraHeaderAttributes(['class' => 'orders-table-col-total'])
+                    ->extraCellAttributes(['class' => 'orders-table-col-total']),
 
-                TextColumn::make('status')
+                TextColumn::make('status_display')
                     ->label('حالة الطلب')
+                    ->state(fn (Order $record): string => (string) $record->status)
                     ->badge()
                     ->formatStateUsing(fn (string $state): string => match ($state) {
                         'pending' => 'انتظار',
@@ -142,12 +143,13 @@ class OrdersTable
                         };
                     })
                     ->wrap()
-                    ->extraAttributes(['class' => 'text-xs']),
+                    ->grow(false)
+                    ->extraHeaderAttributes(['class' => 'orders-table-col-status-badge'])
+                    ->extraCellAttributes(['class' => 'orders-table-col-status-badge']),
 
                 SelectColumn::make('status')
                     ->label('تغيير الحالة')
                     ->grow(false)
-                    ->extraAttributes(['class' => 'text-xs'])
                     ->extraHeaderAttributes(['class' => 'orders-table-col-status'])
                     ->extraCellAttributes(['class' => 'orders-table-col-status'])
                     ->hidden(fn (): bool => (Livewire::current()?->activeTab ?? null) === 'trash')
@@ -176,7 +178,6 @@ class OrdersTable
                         };
 
                         return [
-                            'class' => 'text-xs min-w-0 max-w-full',
                             'style' => "background-color: {$bg} !important; color: {$text} !important; border-color: {$bg} !important; transition: background-color 150ms ease-in-out, color 150ms ease-in-out;",
                         ];
                     }),
@@ -371,7 +372,7 @@ class OrdersTable
                         'items' => $record->orderItems,
                     ])),
                 DeleteAction::make()
-                    ->visible(fn () => false),
+                    ->visible(fn (): bool => (Livewire::current()?->activeTab ?? null) !== 'delivered'),
                 RestoreAction::make()
                     ->visible(fn ($record): bool => method_exists($record, 'trashed') && $record->trashed()),
                 ForceDeleteAction::make()
