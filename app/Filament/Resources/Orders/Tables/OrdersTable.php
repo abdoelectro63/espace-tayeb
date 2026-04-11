@@ -83,7 +83,18 @@ class OrdersTable
                     })
                     ->badge()
                     ->color(fn (string $state): string => $state === 'عدة منتجات' ? 'warning' : 'gray')
-                    ->wrap(),
+                    ->grow(false)
+                    ->extraHeaderAttributes(['class' => 'orders-table-col-products'])
+                    ->extraCellAttributes(['class' => 'orders-table-col-products'])
+                    ->tooltip(function ($record): ?string {
+                        $names = $record->orderItems
+                            ->map(fn ($item): ?string => $item->product?->name)
+                            ->filter()
+                            ->unique()
+                            ->values();
+
+                        return $names->isEmpty() ? null : $names->implode('، ');
+                    }),
                 TextColumn::make('total_price')->label('المجموع')->money('MAD'),
 
                 TextColumn::make('status')
@@ -115,6 +126,9 @@ class OrdersTable
 
                 SelectColumn::make('status')
                     ->label('تغيير الحالة')
+                    ->grow(false)
+                    ->extraHeaderAttributes(['class' => 'orders-table-col-status'])
+                    ->extraCellAttributes(['class' => 'orders-table-col-status'])
                     ->hidden(fn (): bool => (Livewire::current()?->activeTab ?? null) === 'trash')
                     ->disabled(fn (): bool => (Livewire::current()?->activeTab ?? null) === 'delivered')
                     ->selectablePlaceholder(false)

@@ -139,11 +139,14 @@
     }
 
     /*
-     * Orders resource list: use full panel width, drop inner horizontal scroll, allow cell wrap.
-     * (Filament tables use overflow-x-auto on .fi-ta-content-ctn and whitespace-nowrap on tbody by default.)
+     * Orders resource list: full panel width, wrapped text, compact products column so status stays visible on laptop.
+     * Vertical scroll when the table is tall; horizontal scroll remains available if the row is still too wide.
      */
     .fi-body.orders-index-full-table .fi-ta-content-ctn {
-        overflow-x: visible;
+        overflow-x: auto;
+        overflow-y: auto;
+        max-height: min(72vh, 48rem);
+        -webkit-overflow-scrolling: touch;
     }
 
     .fi-body.orders-index-full-table .fi-ta-table > thead,
@@ -157,8 +160,95 @@
         vertical-align: top;
     }
 
+    .fi-body.orders-index-full-table .fi-ta-header-cell.orders-table-col-products,
+    .fi-body.orders-index-full-table .fi-ta-cell.orders-table-col-products {
+        width: 6.5rem;
+        max-width: 6.5rem;
+    }
+
+    .fi-body.orders-index-full-table .fi-ta-cell.orders-table-col-products .fi-ta-col {
+        min-width: 0;
+        max-width: 100%;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .fi-body.orders-index-full-table .fi-ta-header-cell.orders-table-col-status,
+    .fi-body.orders-index-full-table .fi-ta-cell.orders-table-col-status {
+        min-width: 9.5rem;
+        width: 9.5rem;
+    }
+
     .fi-body.orders-index-full-table .fi-ta-table input,
     .fi-body.orders-index-full-table .fi-ta-table select {
         max-width: 100%;
+    }
+
+    /*
+     * Filament: `.fi-main-ctn-sidebar-open` is present when the sidebar is expanded.
+     * When the menu is collapsed on desktop (toggle closed), main is wider — use fixed table layout
+     * so all columns share the viewport and stay visible on typical laptop widths.
+     */
+    @media (min-width: 1024px) {
+        body.fi-body-has-sidebar-collapsible-on-desktop.orders-index-full-table
+            .fi-main-ctn:not(.fi-main-ctn-sidebar-open)
+            .fi-ta-table,
+        body.fi-body-has-sidebar-fully-collapsible-on-desktop.orders-index-full-table
+            .fi-main-ctn:not(.fi-main-ctn-sidebar-open)
+            .fi-ta-table {
+            width: 100%;
+            table-layout: fixed;
+        }
+
+        body.fi-body-has-sidebar-collapsible-on-desktop.orders-index-full-table
+            .fi-main-ctn:not(.fi-main-ctn-sidebar-open)
+            .fi-ta-header-cell,
+        body.fi-body-has-sidebar-collapsible-on-desktop.orders-index-full-table
+            .fi-main-ctn:not(.fi-main-ctn-sidebar-open)
+            .fi-ta-cell,
+        body.fi-body-has-sidebar-fully-collapsible-on-desktop.orders-index-full-table
+            .fi-main-ctn:not(.fi-main-ctn-sidebar-open)
+            .fi-ta-header-cell,
+        body.fi-body-has-sidebar-fully-collapsible-on-desktop.orders-index-full-table
+            .fi-main-ctn:not(.fi-main-ctn-sidebar-open)
+            .fi-ta-cell {
+            padding-left: 0.5rem;
+            padding-right: 0.5rem;
+        }
+
+        body.fi-body-has-sidebar-collapsible-on-desktop.orders-index-full-table
+            .fi-main-ctn:not(.fi-main-ctn-sidebar-open)
+            .fi-ta-header-cell.orders-table-col-status,
+        body.fi-body-has-sidebar-collapsible-on-desktop.orders-index-full-table
+            .fi-main-ctn:not(.fi-main-ctn-sidebar-open)
+            .fi-ta-cell.orders-table-col-status,
+        body.fi-body-has-sidebar-fully-collapsible-on-desktop.orders-index-full-table
+            .fi-main-ctn:not(.fi-main-ctn-sidebar-open)
+            .fi-ta-header-cell.orders-table-col-status,
+        body.fi-body-has-sidebar-fully-collapsible-on-desktop.orders-index-full-table
+            .fi-main-ctn:not(.fi-main-ctn-sidebar-open)
+            .fi-ta-cell.orders-table-col-status {
+            width: 12%;
+            min-width: 0;
+            max-width: none;
+        }
+
+        body.fi-body-has-sidebar-collapsible-on-desktop.orders-index-full-table
+            .fi-main-ctn:not(.fi-main-ctn-sidebar-open)
+            .fi-ta-header-cell.orders-table-col-products,
+        body.fi-body-has-sidebar-collapsible-on-desktop.orders-index-full-table
+            .fi-main-ctn:not(.fi-main-ctn-sidebar-open)
+            .fi-ta-cell.orders-table-col-products,
+        body.fi-body-has-sidebar-fully-collapsible-on-desktop.orders-index-full-table
+            .fi-main-ctn:not(.fi-main-ctn-sidebar-open)
+            .fi-ta-header-cell.orders-table-col-products,
+        body.fi-body-has-sidebar-fully-collapsible-on-desktop.orders-index-full-table
+            .fi-main-ctn:not(.fi-main-ctn-sidebar-open)
+            .fi-ta-cell.orders-table-col-products {
+            width: 8%;
+            min-width: 0;
+            max-width: none;
+        }
     }
 }
