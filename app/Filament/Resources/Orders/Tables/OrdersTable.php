@@ -56,30 +56,42 @@ class OrdersTable
                     ->dateTime('d/m/Y H:i')
                     ->sortable()
                     ->wrap()
+                    ->toggleable(isToggledHiddenByDefault: true)
                     ->grow(false)
                     ->extraHeaderAttributes(['class' => 'orders-table-col-date'])
-                    ->extraCellAttributes(['class' => 'orders-table-col-date']),
+                    ->extraCellAttributes(['class' => 'orders-table-col-date'])
+                    ->extraAttributes(['class' => 'text-xs']),
                 TextColumn::make('customer_name')
                     ->label('الزبون')
                     ->searchable()
                     ->wrap()
                     ->extraHeaderAttributes(['class' => 'orders-table-col-name'])
-                    ->extraCellAttributes(['class' => 'orders-table-col-name']),
+                    ->extraCellAttributes(['class' => 'orders-table-col-name'])
+                    ->extraAttributes(['class' => 'text-xs']),
                 TextInputColumn::make('customer_phone')
                     ->label('الهاتف')
                     ->disabled(fn (): bool => (Livewire::current()?->activeTab ?? null) === 'delivered')
                     ->extraHeaderAttributes(['class' => 'orders-table-col-phone'])
-                    ->extraCellAttributes(['class' => 'orders-table-col-phone']),
+                    ->extraCellAttributes(['class' => 'orders-table-col-phone'])
+                    ->extraAttributes(['class' => 'text-xs']),
                 TextInputColumn::make('city')
                     ->label('المدينة')
+                    ->toggleable(isToggledHiddenByDefault: true)
                     ->disabled(fn (): bool => (Livewire::current()?->activeTab ?? null) === 'delivered')
                     ->extraHeaderAttributes(['class' => 'orders-table-col-city'])
-                    ->extraCellAttributes(['class' => 'orders-table-col-city']),
-                TextInputColumn::make('shipping_address')
+                    ->extraCellAttributes(['class' => 'orders-table-col-city'])
+                    ->extraAttributes(['class' => 'text-xs']),
+                TextColumn::make('shipping_address')
                     ->label('العنوان')
-                    ->disabled(fn (): bool => (Livewire::current()?->activeTab ?? null) === 'delivered')
+                    ->searchable()
+                    ->limit(20)
+                    ->wrap()
+                    ->tooltip(fn (Order $record): ?string => filled($record->shipping_address)
+                        ? (string) $record->shipping_address
+                        : null)
                     ->extraHeaderAttributes(['class' => 'orders-table-col-address'])
-                    ->extraCellAttributes(['class' => 'orders-table-col-address']),
+                    ->extraCellAttributes(['class' => 'orders-table-col-address'])
+                    ->extraAttributes(['class' => 'text-xs']),
                 TextColumn::make('products')
                     ->label('المنتجات')
                     ->state(function ($record): string {
@@ -97,9 +109,11 @@ class OrdersTable
                     })
                     ->badge()
                     ->color(fn (string $state): string => $state === 'عدة منتجات' ? 'warning' : 'gray')
+                    ->wrap()
                     ->grow(false)
                     ->extraHeaderAttributes(['class' => 'orders-table-col-products'])
                     ->extraCellAttributes(['class' => 'orders-table-col-products'])
+                    ->extraAttributes(['class' => 'text-xs'])
                     ->tooltip(function ($record): ?string {
                         $names = $record->orderItems
                             ->map(fn ($item): ?string => $item->product?->name)
@@ -114,13 +128,15 @@ class OrdersTable
                     ->money('MAD')
                     ->grow(false)
                     ->extraHeaderAttributes(['class' => 'orders-table-col-total'])
-                    ->extraCellAttributes(['class' => 'orders-table-col-total']),
+                    ->extraCellAttributes(['class' => 'orders-table-col-total'])
+                    ->extraAttributes(['class' => 'text-xs']),
 
                 SelectColumn::make('status')
                     ->label('تغيير الحالة')
                     ->grow(false)
                     ->extraHeaderAttributes(['class' => 'orders-table-col-status'])
                     ->extraCellAttributes(['class' => 'orders-table-col-status'])
+                    ->extraAttributes(['class' => 'text-xs'])
                     ->hidden(fn (): bool => (Livewire::current()?->activeTab ?? null) === 'trash')
                     ->disabled(fn (): bool => (Livewire::current()?->activeTab ?? null) === 'delivered')
                     ->selectablePlaceholder(false)

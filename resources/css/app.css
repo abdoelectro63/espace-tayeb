@@ -187,10 +187,10 @@
 
         .fi-body.orders-index-full-table .fi-ta-header-cell,
         .fi-body.orders-index-full-table .fi-ta-cell {
-            padding-left: 0.5rem;
-            padding-right: 0.5rem;
-            padding-top: 0.5rem;
-            padding-bottom: 0.5rem;
+            padding-left: 0.375rem;
+            padding-right: 0.375rem;
+            padding-top: 0.375rem;
+            padding-bottom: 0.375rem;
         }
     }
 
@@ -204,7 +204,7 @@
 
         .fi-body.orders-index-full-table .fi-ta-header-cell,
         .fi-body.orders-index-full-table .fi-ta-cell {
-            padding: 0.5rem 0.375rem;
+            padding: 0.375rem 0.25rem;
             font-size: 0.8125rem;
             line-height: 1.4;
         }
@@ -236,8 +236,8 @@
             word-break: break-word;
         }
 
-        .fi-body.orders-index-full-table .fi-ta-cell.orders-table-col-address .fi-input-wrp-content-ctn,
-        .fi-body.orders-index-full-table .fi-ta-cell.orders-table-col-address .fi-ta-text-input {
+        .fi-body.orders-index-full-table .fi-ta-cell.orders-table-col-address .fi-ta-col,
+        .fi-body.orders-index-full-table .fi-ta-cell.orders-table-col-address .fi-ta-text {
             min-width: 0;
             max-width: 100%;
         }
@@ -268,8 +268,7 @@
         }
 
         .fi-body.orders-index-full-table .fi-ta-cell.orders-table-col-phone .fi-input,
-        .fi-body.orders-index-full-table .fi-ta-cell.orders-table-col-city .fi-input,
-        .fi-body.orders-index-full-table .fi-ta-cell.orders-table-col-address .fi-input {
+        .fi-body.orders-index-full-table .fi-ta-cell.orders-table-col-city .fi-input {
             width: 100%;
             min-width: 0;
             font-size: 0.8125rem;
