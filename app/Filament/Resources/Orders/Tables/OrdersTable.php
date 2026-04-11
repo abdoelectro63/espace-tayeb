@@ -41,15 +41,14 @@ class OrdersTable
         $table = $table
             ->modifyQueryUsing(fn (Builder $query) => $query->withTrashed()->with('orderItems.product'))
             ->defaultSort('created_at', 'desc')
-            ->checkIfRecordIsSelectableUsing(
-                fn (Order $record): bool => (Livewire::current()?->activeTab ?? null) !== 'delivered'
-            )
+            ->disabledSelection(fn (): bool => (Livewire::current()?->activeTab ?? null) === 'delivered')
+            ->stackedOnMobile()
+            ->striped()
             ->recordUrl(
                 fn (Order $record): ?string => (Livewire::current()?->activeTab ?? null) === 'delivered'
                     ? null
                     : OrderResource::getUrl('edit', ['record' => $record])
             )
-            // بمجرد تعريف الـ Bulk Actions، ستظهر الـ Checkboxes تلقائياً في الجدول
             ->columns([
                 TextColumn::make('created_at')
                     ->label('تاريخ الطلب')
@@ -60,38 +59,38 @@ class OrdersTable
                     ->grow(false)
                     ->extraHeaderAttributes(['class' => 'orders-table-col-date'])
                     ->extraCellAttributes(['class' => 'orders-table-col-date'])
-                    ->extraAttributes(['class' => 'text-xs']),
+                    ->extraAttributes(['class' => 'text-sm']),
                 TextColumn::make('customer_name')
                     ->label('الزبون')
                     ->searchable()
                     ->wrap()
                     ->extraHeaderAttributes(['class' => 'orders-table-col-name'])
                     ->extraCellAttributes(['class' => 'orders-table-col-name'])
-                    ->extraAttributes(['class' => 'text-xs']),
+                    ->extraAttributes(['class' => 'text-sm']),
                 TextInputColumn::make('customer_phone')
                     ->label('الهاتف')
                     ->disabled(fn (): bool => (Livewire::current()?->activeTab ?? null) === 'delivered')
                     ->extraHeaderAttributes(['class' => 'orders-table-col-phone'])
                     ->extraCellAttributes(['class' => 'orders-table-col-phone'])
-                    ->extraAttributes(['class' => 'text-xs']),
+                    ->extraAttributes(['class' => 'text-sm']),
                 TextInputColumn::make('city')
                     ->label('المدينة')
                     ->toggleable(isToggledHiddenByDefault: true)
                     ->disabled(fn (): bool => (Livewire::current()?->activeTab ?? null) === 'delivered')
                     ->extraHeaderAttributes(['class' => 'orders-table-col-city'])
                     ->extraCellAttributes(['class' => 'orders-table-col-city'])
-                    ->extraAttributes(['class' => 'text-xs']),
+                    ->extraAttributes(['class' => 'text-sm']),
                 TextColumn::make('shipping_address')
                     ->label('العنوان')
                     ->searchable()
-                    ->limit(20)
+                    ->limit(32)
                     ->wrap()
                     ->tooltip(fn (Order $record): ?string => filled($record->shipping_address)
                         ? (string) $record->shipping_address
                         : null)
                     ->extraHeaderAttributes(['class' => 'orders-table-col-address'])
                     ->extraCellAttributes(['class' => 'orders-table-col-address'])
-                    ->extraAttributes(['class' => 'text-xs']),
+                    ->extraAttributes(['class' => 'text-sm']),
                 TextColumn::make('products')
                     ->label('المنتجات')
                     ->state(function ($record): string {
@@ -113,7 +112,7 @@ class OrdersTable
                     ->grow(false)
                     ->extraHeaderAttributes(['class' => 'orders-table-col-products'])
                     ->extraCellAttributes(['class' => 'orders-table-col-products'])
-                    ->extraAttributes(['class' => 'text-xs'])
+                    ->extraAttributes(['class' => 'text-sm'])
                     ->tooltip(function ($record): ?string {
                         $names = $record->orderItems
                             ->map(fn ($item): ?string => $item->product?->name)
@@ -129,14 +128,13 @@ class OrdersTable
                     ->grow(false)
                     ->extraHeaderAttributes(['class' => 'orders-table-col-total'])
                     ->extraCellAttributes(['class' => 'orders-table-col-total'])
-                    ->extraAttributes(['class' => 'text-xs']),
+                    ->extraAttributes(['class' => 'text-sm']),
 
                 SelectColumn::make('status')
                     ->label('تغيير الحالة')
                     ->grow(false)
                     ->extraHeaderAttributes(['class' => 'orders-table-col-status'])
                     ->extraCellAttributes(['class' => 'orders-table-col-status'])
-                    ->extraAttributes(['class' => 'text-xs'])
                     ->hidden(fn (): bool => (Livewire::current()?->activeTab ?? null) === 'trash')
                     ->disabled(fn (): bool => (Livewire::current()?->activeTab ?? null) === 'delivered')
                     ->selectablePlaceholder(false)
@@ -163,7 +161,8 @@ class OrdersTable
                         };
 
                         return [
-                            'style' => "background-color: {$bg} !important; color: {$text} !important; border-color: {$bg} !important; transition: background-color 150ms ease-in-out, color 150ms ease-in-out;",
+                            'class' => 'orders-status-select',
+                            'style' => "background-color: {$bg} !important; color: {$text} !important; border-color: {$bg} !important; transition: background-color 150ms ease-in-out, color 150ms ease-in-out, box-shadow 150ms ease-in-out;",
                         ];
                     }),
             ])
