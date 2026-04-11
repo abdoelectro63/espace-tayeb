@@ -56,17 +56,30 @@ class OrdersTable
                     ->label('تاريخ الطلب')
                     ->view('filament.tables.columns.order-date-with-trash')
                     ->sortable()
-                    ->disabledClick(),
-                TextColumn::make('customer_name')->label('الزبون')->searchable()->wrap(),
+                    ->disabledClick()
+                    ->extraAttributes(['class' => 'text-xs']),
+                TextColumn::make('customer_name')
+                    ->label('الزبون')
+                    ->searchable()
+                    ->wrap()
+                    ->extraAttributes(['class' => 'text-xs']),
                 TextInputColumn::make('customer_phone')
                     ->label('الهاتف')
-                    ->disabled(fn (): bool => (Livewire::current()?->activeTab ?? null) === 'delivered'),
+                    ->disabled(fn (): bool => (Livewire::current()?->activeTab ?? null) === 'delivered')
+                    ->extraAttributes(['class' => 'text-xs'])
+                    ->extraInputAttributes(['class' => 'text-xs']),
                 TextInputColumn::make('city')
                     ->label('المدينة')
-                    ->disabled(fn (): bool => (Livewire::current()?->activeTab ?? null) === 'delivered'),
+                    ->disabled(fn (): bool => (Livewire::current()?->activeTab ?? null) === 'delivered')
+                    ->extraAttributes(['class' => 'text-xs'])
+                    ->extraInputAttributes(['class' => 'text-xs']),
                 TextInputColumn::make('shipping_address')
                     ->label('العنوان')
-                    ->disabled(fn (): bool => (Livewire::current()?->activeTab ?? null) === 'delivered'),
+                    ->disabled(fn (): bool => (Livewire::current()?->activeTab ?? null) === 'delivered')
+                    ->extraAttributes(['class' => 'text-xs'])
+                    ->extraCellAttributes(['class' => 'orders-table-col-address'])
+                    ->extraInputAttributes(['class' => 'text-xs'])
+                    ->tooltip(fn (Order $record): ?string => filled($record->shipping_address) ? (string) $record->shipping_address : null),
                 TextColumn::make('products')
                     ->label('المنتجات')
                     ->state(function ($record): string {
@@ -84,7 +97,9 @@ class OrdersTable
                     })
                     ->badge()
                     ->color(fn (string $state): string => $state === 'عدة منتجات' ? 'warning' : 'gray')
+                    ->wrap()
                     ->grow(false)
+                    ->extraAttributes(['class' => 'text-xs'])
                     ->extraHeaderAttributes(['class' => 'orders-table-col-products'])
                     ->extraCellAttributes(['class' => 'orders-table-col-products'])
                     ->tooltip(function ($record): ?string {
@@ -96,7 +111,10 @@ class OrdersTable
 
                         return $names->isEmpty() ? null : $names->implode('، ');
                     }),
-                TextColumn::make('total_price')->label('المجموع')->money('MAD'),
+                TextColumn::make('total_price')
+                    ->label('المجموع')
+                    ->money('MAD')
+                    ->extraAttributes(['class' => 'text-xs']),
 
                 TextColumn::make('status')
                     ->label('حالة الطلب')
@@ -123,11 +141,13 @@ class OrdersTable
                             default => 'gray',
                         };
                     })
-                    ->wrap(),
+                    ->wrap()
+                    ->extraAttributes(['class' => 'text-xs']),
 
                 SelectColumn::make('status')
                     ->label('تغيير الحالة')
                     ->grow(false)
+                    ->extraAttributes(['class' => 'text-xs'])
                     ->extraHeaderAttributes(['class' => 'orders-table-col-status'])
                     ->extraCellAttributes(['class' => 'orders-table-col-status'])
                     ->hidden(fn (): bool => (Livewire::current()?->activeTab ?? null) === 'trash')
@@ -156,6 +176,7 @@ class OrdersTable
                         };
 
                         return [
+                            'class' => 'text-xs min-w-0 max-w-full',
                             'style' => "background-color: {$bg} !important; color: {$text} !important; border-color: {$bg} !important; transition: background-color 150ms ease-in-out, color 150ms ease-in-out;",
                         ];
                     }),

@@ -16,12 +16,12 @@
         @if ($showEditLink && $record instanceof Order)
             <a
                 href="{{ OrderResource::getUrl('edit', ['record' => $record]) }}"
-                class="fi-link text-sm"
+                class="fi-link text-xs"
             >
                 {{ $formatted }}
             </a>
         @else
-            <span class="text-sm">{{ $formatted }}</span>
+            <span class="text-xs">{{ $formatted }}</span>
         @endif
     </div>
 
