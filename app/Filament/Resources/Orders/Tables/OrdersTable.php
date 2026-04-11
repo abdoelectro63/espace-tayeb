@@ -116,37 +116,6 @@ class OrdersTable
                     ->extraHeaderAttributes(['class' => 'orders-table-col-total'])
                     ->extraCellAttributes(['class' => 'orders-table-col-total']),
 
-                TextColumn::make('status_display')
-                    ->label('حالة الطلب')
-                    ->state(fn (Order $record): string => (string) $record->status)
-                    ->badge()
-                    ->formatStateUsing(fn (string $state): string => match ($state) {
-                        'pending' => 'انتظار',
-                        'confirmed' => 'تأكيد',
-                        'no_response' => 'لا جواب',
-                        'cancelled' => 'ملغي',
-                        'shipped' => 'تم الشحن',
-                        'delivered' => 'تم التسليم',
-                        default => $state,
-                    })
-                    ->color(function (string $state): string {
-                        $state = mb_strtolower(trim($state));
-
-                        return match ($state) {
-                            'confirmed', 'confirme', 'تأكيد' => 'success',
-                            'no_response', 'pas de reponse', 'لا جواب' => 'warning',
-                            'cancelled', 'annule', 'ملغي' => 'danger',
-                            'shipped', 'expedie', 'تم الشحن' => 'primary',
-                            'delivered', 'livre', 'تم التسليم' => 'gray',
-                            'pending', 'en attente', 'انتظار' => 'gray',
-                            default => 'gray',
-                        };
-                    })
-                    ->wrap()
-                    ->grow(false)
-                    ->extraHeaderAttributes(['class' => 'orders-table-col-status-badge'])
-                    ->extraCellAttributes(['class' => 'orders-table-col-status-badge']),
-
                 SelectColumn::make('status')
                     ->label('تغيير الحالة')
                     ->grow(false)
@@ -372,6 +341,9 @@ class OrdersTable
                         'items' => $record->orderItems,
                     ])),
                 DeleteAction::make()
+                    ->iconButton()
+                    ->label('')
+                    ->tooltip(__('filament-actions::delete.single.label'))
                     ->visible(fn (): bool => (Livewire::current()?->activeTab ?? null) !== 'delivered'),
                 RestoreAction::make()
                     ->visible(fn ($record): bool => method_exists($record, 'trashed') && $record->trashed()),
