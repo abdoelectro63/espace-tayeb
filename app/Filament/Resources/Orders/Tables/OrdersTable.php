@@ -26,6 +26,7 @@ use Filament\Tables;
 use Filament\Tables\Columns\SelectColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Columns\TextInputColumn;
+use Filament\Tables\Columns\ViewColumn;
 use Filament\Tables\Filters\Indicator;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
@@ -51,11 +52,11 @@ class OrdersTable
             )
             // بمجرد تعريف الـ Bulk Actions، ستظهر الـ Checkboxes تلقائياً في الجدول
             ->columns([
-                TextColumn::make('created_at')
+                ViewColumn::make('created_at')
                     ->label('تاريخ الطلب')
-                    ->dateTime('d/m/Y H:i')
+                    ->view('filament.tables.columns.order-date-with-trash')
                     ->sortable()
-                    ->wrap(),
+                    ->disabledClick(),
                 TextColumn::make('customer_name')->label('الزبون')->searchable()->wrap(),
                 TextInputColumn::make('customer_phone')
                     ->label('الهاتف')
@@ -349,7 +350,7 @@ class OrdersTable
                         'items' => $record->orderItems,
                     ])),
                 DeleteAction::make()
-                    ->visible(fn (): bool => (Livewire::current()?->activeTab ?? null) !== 'delivered'),
+                    ->visible(fn () => false),
                 RestoreAction::make()
                     ->visible(fn ($record): bool => method_exists($record, 'trashed') && $record->trashed()),
                 ForceDeleteAction::make()
