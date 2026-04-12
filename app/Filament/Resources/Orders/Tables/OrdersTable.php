@@ -22,6 +22,7 @@ use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
+use Filament\Support\Enums\Alignment;
 use Filament\Tables;
 use Filament\Tables\Columns\SelectColumn;
 use Filament\Tables\Columns\TextColumn;
@@ -59,80 +60,71 @@ class OrdersTable
                     ->grow(false)
                     ->extraHeaderAttributes(['class' => 'orders-table-col-date'])
                     ->extraCellAttributes(['class' => 'orders-table-col-date'])
-                    ->extraAttributes(['class' => 'text-sm']),
+                    ->extraAttributes(['class' => 'text-xs']),
+                TextColumn::make('number')
+                    ->label('رقم')
+                    ->toggleable()
+                    ->searchable()
+                    ->sortable()
+                    ->grow(false)
+                    ->alignment(Alignment::Start)
+                    ->extraHeaderAttributes(['class' => 'orders-table-col-id'])
+                    ->extraCellAttributes(['class' => 'orders-table-col-id'])
+                    ->extraAttributes(['class' => 'text-xs tabular-nums']),
                 TextColumn::make('customer_name')
                     ->label('الزبون')
+                    ->toggleable()
                     ->searchable()
                     ->wrap()
+                    ->alignment(Alignment::Start)
                     ->extraHeaderAttributes(['class' => 'orders-table-col-name'])
                     ->extraCellAttributes(['class' => 'orders-table-col-name'])
-                    ->extraAttributes(['class' => 'text-sm']),
+                    ->extraAttributes(['class' => 'text-xs']),
                 TextInputColumn::make('customer_phone')
                     ->label('الهاتف')
+                    ->toggleable()
                     ->disabled(fn (): bool => (Livewire::current()?->activeTab ?? null) === 'delivered')
+                    ->grow(false)
+                    ->alignment(Alignment::Start)
                     ->extraHeaderAttributes(['class' => 'orders-table-col-phone'])
                     ->extraCellAttributes(['class' => 'orders-table-col-phone'])
-                    ->extraAttributes(['class' => 'text-sm']),
+                    ->extraAttributes(['class' => 'text-xs']),
                 TextInputColumn::make('city')
                     ->label('المدينة')
-                    ->toggleable(isToggledHiddenByDefault: true)
+                    ->toggleable(isToggledHiddenByDefault: false)
+                    ->alignment(Alignment::Start)
                     ->disabled(fn (): bool => (Livewire::current()?->activeTab ?? null) === 'delivered')
                     ->extraHeaderAttributes(['class' => 'orders-table-col-city'])
                     ->extraCellAttributes(['class' => 'orders-table-col-city'])
-                    ->extraAttributes(['class' => 'text-sm']),
+                    ->extraAttributes(['class' => 'text-xs']),
                 TextColumn::make('shipping_address')
                     ->label('العنوان')
-                    ->searchable()
+                    ->toggleable()
                     ->limit(32)
                     ->wrap()
+                    ->alignment(Alignment::Start)
                     ->tooltip(fn (Order $record): ?string => filled($record->shipping_address)
                         ? (string) $record->shipping_address
                         : null)
                     ->extraHeaderAttributes(['class' => 'orders-table-col-address'])
                     ->extraCellAttributes(['class' => 'orders-table-col-address'])
-                    ->extraAttributes(['class' => 'text-sm']),
-                TextColumn::make('products')
-                    ->label('المنتجات')
-                    ->state(function ($record): string {
-                        $products = $record->orderItems
-                            ->map(fn ($item): ?string => $item->product?->name)
-                            ->filter()
-                            ->unique()
-                            ->values();
-
-                        if ($products->count() <= 1) {
-                            return (string) ($products->first() ?? '—');
-                        }
-
-                        return 'عدة منتجات';
-                    })
-                    ->badge()
-                    ->color(fn (string $state): string => $state === 'عدة منتجات' ? 'warning' : 'gray')
-                    ->wrap()
-                    ->grow(false)
-                    ->extraHeaderAttributes(['class' => 'orders-table-col-products'])
-                    ->extraCellAttributes(['class' => 'orders-table-col-products'])
-                    ->extraAttributes(['class' => 'text-sm'])
-                    ->tooltip(function ($record): ?string {
-                        $names = $record->orderItems
-                            ->map(fn ($item): ?string => $item->product?->name)
-                            ->filter()
-                            ->unique()
-                            ->values();
-
-                        return $names->isEmpty() ? null : $names->implode('، ');
-                    }),
+                    ->extraAttributes(['class' => 'text-xs']),
                 TextColumn::make('total_price')
                     ->label('المجموع')
+                    ->toggleable()
                     ->money('MAD')
                     ->grow(false)
+                    ->alignment(Alignment::End)
                     ->extraHeaderAttributes(['class' => 'orders-table-col-total'])
                     ->extraCellAttributes(['class' => 'orders-table-col-total'])
-                    ->extraAttributes(['class' => 'text-sm']),
+                    ->extraAttributes(['class' => 'text-xs tabular-nums']),
 
                 SelectColumn::make('status')
                     ->label('تغيير الحالة')
+                    ->toggleable()
                     ->grow(false)
+                    ->native()
+                    ->alignment(Alignment::Center)
                     ->extraHeaderAttributes(['class' => 'orders-table-col-status'])
                     ->extraCellAttributes(['class' => 'orders-table-col-status'])
                     ->hidden(fn (): bool => (Livewire::current()?->activeTab ?? null) === 'trash')
@@ -162,8 +154,40 @@ class OrdersTable
 
                         return [
                             'class' => 'orders-status-select',
-                            'style' => "background-color: {$bg} !important; color: {$text} !important; border-color: {$bg} !important; transition: background-color 150ms ease-in-out, color 150ms ease-in-out, box-shadow 150ms ease-in-out;",
+                            'style' => "box-sizing:border-box;width:auto;background-color:{$bg} !important;color:{$text} !important;border-color:{$bg} !important;transition:background-color 150ms ease-in-out,color 150ms ease-in-out,box-shadow 150ms ease-in-out;",
                         ];
+                    }),
+                TextColumn::make('products')
+                    ->label('المنتجات')
+                    ->toggleable(isToggledHiddenByDefault: true)
+                    ->state(function ($record): string {
+                        $products = $record->orderItems
+                            ->map(fn ($item): ?string => $item->product?->name)
+                            ->filter()
+                            ->unique()
+                            ->values();
+
+                        if ($products->count() <= 1) {
+                            return (string) ($products->first() ?? '—');
+                        }
+
+                        return 'عدة منتجات';
+                    })
+                    ->badge()
+                    ->color(fn (string $state): string => $state === 'عدة منتجات' ? 'warning' : 'gray')
+                    ->wrap()
+                    ->grow(false)
+                    ->extraHeaderAttributes(['class' => 'orders-table-col-products'])
+                    ->extraCellAttributes(['class' => 'orders-table-col-products'])
+                    ->extraAttributes(['class' => 'text-xs'])
+                    ->tooltip(function ($record): ?string {
+                        $names = $record->orderItems
+                            ->map(fn ($item): ?string => $item->product?->name)
+                            ->filter()
+                            ->unique()
+                            ->values();
+
+                        return $names->isEmpty() ? null : $names->implode('، ');
                     }),
             ])
             ->filters([

@@ -4,6 +4,8 @@
 @source '../../storage/framework/views/*.php';
 @source '../**/*.blade.php';
 @source '../**/*.js';
+@source '../../app/**/*.php';
+@source '../../vendor/filament/**/*.blade.php';
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -139,8 +141,7 @@
     }
 
     /*
-     * Orders list (Filament): readable layout, clear bulk-selection column, prominent status control.
-     * stackedOnMobile() — relax max-height so card rows are not clipped.
+     * Orders list: auto-layout table, columns follow content width, horizontal scroll on wrapper.
      */
     .fi-body.orders-index-full-table .fi-ta-content-ctn {
         overflow-x: auto;
@@ -150,11 +151,21 @@
         border-radius: 0.75rem;
         border: 1px solid rgb(228 228 231);
         box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.06);
+        scrollbar-gutter: stable;
     }
 
     .dark .fi-body.orders-index-full-table .fi-ta-content-ctn {
         border-color: rgb(39 39 42);
         box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.25);
+    }
+
+    .fi-body.orders-index-full-table .fi-ta-table {
+        width: max-content;
+        min-width: 100%;
+        max-width: none;
+        table-layout: auto;
+        border-collapse: separate;
+        border-spacing: 0;
     }
 
     .fi-body.orders-index-full-table .fi-ta-table > thead,
@@ -166,6 +177,13 @@
     .fi-body.orders-index-full-table .fi-ta-cell {
         min-width: 0;
         vertical-align: middle;
+    }
+
+    .fi-body.orders-index-full-table .fi-ta-header-cell:not(.fi-ta-selection-cell):not(.fi-ta-group-selection-cell),
+    .fi-body.orders-index-full-table .fi-ta-cell:not(.fi-ta-selection-cell):not(.fi-ta-group-selection-cell) {
+        padding: 0.625rem 0.75rem;
+        font-size: 0.8125rem;
+        line-height: 1.5;
     }
 
     .fi-body.orders-index-full-table .fi-ta-table > thead > tr {
@@ -181,12 +199,49 @@
         max-width: 100%;
     }
 
-    /* Bulk selection: dedicated narrow column, centered (not an “empty” cell). */
-    .fi-body.orders-index-full-table .fi-ta-selection-cell {
-        width: 2.75rem;
-        min-width: 2.75rem;
-        max-width: 3rem;
-        padding-inline: 0.5rem;
+    .fi-body.orders-index-full-table .fi-ta-header-cell.orders-table-col-id,
+    .fi-body.orders-index-full-table .fi-ta-cell.orders-table-col-id,
+    .fi-body.orders-index-full-table .fi-ta-header-cell.orders-table-col-total,
+    .fi-body.orders-index-full-table .fi-ta-cell.orders-table-col-total {
+        white-space: nowrap;
+    }
+
+    .fi-body.orders-index-full-table .fi-ta-cell.orders-table-col-address {
+        max-width: 18rem;
+        word-break: break-word;
+    }
+
+    .fi-body.orders-index-full-table .fi-ta-cell.orders-table-col-address .fi-ta-col,
+    .fi-body.orders-index-full-table .fi-ta-cell.orders-table-col-address .fi-ta-text {
+        min-width: 0;
+        max-width: 100%;
+    }
+
+    .fi-body.orders-index-full-table .fi-ta-cell.orders-table-col-phone .fi-input,
+    .fi-body.orders-index-full-table .fi-ta-cell.orders-table-col-city .fi-input {
+        width: auto;
+        min-width: 4.5rem;
+        max-width: 12rem;
+        min-height: 2rem;
+        font-size: 0.8125rem;
+        line-height: 1.45;
+    }
+
+    /*
+     * Bulk selection: narrow column, centered.
+     * Filament stacked-on-mobile tables use a more specific tbody rule (sm:w-1) in vendor/filament/tables/resources/css/table.css
+     * that can override a short selector in production. Match that chain + !important so header/body columns stay compact.
+     */
+    .fi-body.orders-index-full-table .fi-ta-table.fi-ta-table-stacked-on-mobile > thead > tr > th.fi-ta-selection-cell,
+    .fi-body.orders-index-full-table .fi-ta-table.fi-ta-table-stacked-on-mobile > thead > tr > th.fi-ta-group-selection-cell,
+    .fi-body.orders-index-full-table .fi-ta-table.fi-ta-table-stacked-on-mobile > tbody > tr > td.fi-ta-selection-cell,
+    .fi-body.orders-index-full-table .fi-ta-table.fi-ta-table-stacked-on-mobile > tbody > tr > td.fi-ta-group-selection-cell {
+        box-sizing: border-box;
+        width: 2.25rem !important;
+        min-width: 30px !important;
+        max-width: 2.5rem !important;
+        padding-inline: 0.25rem !important;
+        padding-block: 0.375rem !important;
         text-align: center;
         vertical-align: middle;
     }
@@ -209,28 +264,77 @@
         opacity: 0.45;
     }
 
-    /* تغيير الحالة — large, modern native select */
+    /* تغيير الحالة — width follows content / options; single custom chevron */
+    .fi-body.orders-index-full-table .fi-ta-cell.orders-table-col-status {
+        width: auto;
+        white-space: nowrap;
+    }
+
+    .fi-body.orders-index-full-table .fi-ta-cell.orders-table-col-status .fi-ta-select {
+        display: inline-block;
+        width: auto !important;
+        max-width: none !important;
+        min-width: 0 !important;
+        box-sizing: border-box;
+    }
+
     .fi-body.orders-index-full-table .fi-ta-cell.orders-table-col-status .fi-input-wrp {
-        width: 100%;
-        max-width: 100%;
+        display: inline-block;
+        width: auto !important;
+        max-width: none !important;
+        box-sizing: border-box;
     }
 
     .fi-body.orders-index-full-table .fi-ta-cell.orders-table-col-status select.orders-status-select,
     .fi-body.orders-index-full-table .fi-ta-cell.orders-table-col-status select {
-        width: 100%;
-        min-width: min(100%, 10.5rem);
-        min-height: 2.75rem;
-        padding: 0.5rem 0.75rem;
+        width: auto !important;
+        min-width: 6.5rem;
+        max-width: 16rem;
+        min-height: 2rem;
+        padding-block: 0.3125rem;
+        padding-inline: 0.5rem 1.5rem;
         box-sizing: border-box;
-        font-size: 0.9375rem;
+        font-size: 0.8125rem;
         font-weight: 600;
         line-height: 1.35;
-        border-radius: 0.625rem;
-        border-width: 2px;
+        border-radius: 0.375rem;
+        border-width: 1px;
         border-style: solid;
-        box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+        box-shadow: none;
         cursor: pointer;
-        appearance: auto;
+        appearance: none;
+        -webkit-appearance: none;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke-width='2' stroke='%2364748b'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' d='M19 9l-7 7-7-7'/%3E%3C/svg%3E");
+        background-repeat: no-repeat;
+        background-size: 0.875rem;
+        background-position: right 0.35rem center;
+    }
+
+    html[dir='rtl'] .fi-body.orders-index-full-table .fi-ta-cell.orders-table-col-status select.orders-status-select,
+    html[dir='rtl'] .fi-body.orders-index-full-table .fi-ta-cell.orders-table-col-status select {
+        background-position: left 0.35rem center;
+        padding-inline: 1.5rem 0.5rem;
+    }
+
+    .dark .fi-body.orders-index-full-table .fi-ta-cell.orders-table-col-status select.orders-status-select,
+    .dark .fi-body.orders-index-full-table .fi-ta-cell.orders-table-col-status select {
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke-width='2' stroke='%2394a3b8'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' d='M19 9l-7 7-7-7'/%3E%3C/svg%3E");
+    }
+
+    .fi-body.orders-index-full-table .fi-ta-header-cell.orders-table-col-status .fi-ta-col,
+    .fi-body.orders-index-full-table .fi-ta-cell.orders-table-col-status .fi-ta-col {
+        justify-content: center;
+    }
+
+    /* المنتجات (optional column) — stay inside cell */
+    .fi-body.orders-index-full-table .fi-ta-cell.orders-table-col-products .fi-badge {
+        max-width: 12rem;
+        box-sizing: border-box;
+        display: inline-block;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        vertical-align: middle;
     }
 
     .fi-body.orders-index-full-table .fi-ta-cell.orders-table-col-status select.orders-status-select:focus,
@@ -248,104 +352,14 @@
             0 0 0 3px rgb(96 165 250 / 0.35);
     }
 
+    .fi-body.orders-index-full-table.orders-table-compact .fi-ta-header-cell:not(.fi-ta-selection-cell):not(.fi-ta-group-selection-cell),
+    .fi-body.orders-index-full-table.orders-table-compact .fi-ta-cell:not(.fi-ta-selection-cell):not(.fi-ta-group-selection-cell) {
+        padding: 0.5rem 0.625rem;
+    }
+
     @media (max-width: 1023px) {
         .fi-body.orders-index-full-table .fi-ta-content-ctn {
             max-height: none;
-        }
-
-        .fi-body.orders-index-full-table .fi-ta-table {
-            width: max(100%, 64rem);
-            table-layout: auto;
-        }
-
-        .fi-body.orders-index-full-table .fi-ta-header-cell,
-        .fi-body.orders-index-full-table .fi-ta-cell {
-            padding-left: 0.5rem;
-            padding-right: 0.5rem;
-            padding-top: 0.5rem;
-            padding-bottom: 0.5rem;
-        }
-    }
-
-    @media (min-width: 1024px) {
-        .fi-body.orders-index-full-table .fi-ta-table {
-            width: 100%;
-            max-width: 100%;
-            table-layout: fixed;
-        }
-
-        .fi-body.orders-index-full-table .fi-ta-header-cell,
-        .fi-body.orders-index-full-table .fi-ta-cell {
-            padding: 0.5rem 0.375rem;
-            font-size: 0.875rem;
-            line-height: 1.45;
-        }
-
-        .fi-body.orders-index-full-table .fi-ta-header-cell.orders-table-col-date,
-        .fi-body.orders-index-full-table .fi-ta-cell.orders-table-col-date {
-            width: 9%;
-        }
-
-        .fi-body.orders-index-full-table .fi-ta-header-cell.orders-table-col-name,
-        .fi-body.orders-index-full-table .fi-ta-cell.orders-table-col-name {
-            width: 11%;
-        }
-
-        .fi-body.orders-index-full-table .fi-ta-header-cell.orders-table-col-phone,
-        .fi-body.orders-index-full-table .fi-ta-cell.orders-table-col-phone {
-            width: 10%;
-            min-width: 6.75rem;
-        }
-
-        .fi-body.orders-index-full-table .fi-ta-header-cell.orders-table-col-city,
-        .fi-body.orders-index-full-table .fi-ta-cell.orders-table-col-city {
-            width: 8%;
-        }
-
-        .fi-body.orders-index-full-table .fi-ta-header-cell.orders-table-col-address,
-        .fi-body.orders-index-full-table .fi-ta-cell.orders-table-col-address {
-            width: 14%;
-            word-break: break-word;
-        }
-
-        .fi-body.orders-index-full-table .fi-ta-cell.orders-table-col-address .fi-ta-col,
-        .fi-body.orders-index-full-table .fi-ta-cell.orders-table-col-address .fi-ta-text {
-            min-width: 0;
-            max-width: 100%;
-        }
-
-        .fi-body.orders-index-full-table .fi-ta-header-cell.orders-table-col-products,
-        .fi-body.orders-index-full-table .fi-ta-cell.orders-table-col-products {
-            width: 12%;
-            max-width: none;
-        }
-
-        .fi-body.orders-index-full-table .fi-ta-cell.orders-table-col-products .fi-ta-col {
-            min-width: 0;
-            max-width: 100%;
-            white-space: normal;
-            word-break: break-word;
-        }
-
-        .fi-body.orders-index-full-table .fi-ta-header-cell.orders-table-col-total,
-        .fi-body.orders-index-full-table .fi-ta-cell.orders-table-col-total {
-            width: 8%;
-        }
-
-        .fi-body.orders-index-full-table .fi-ta-header-cell.orders-table-col-status,
-        .fi-body.orders-index-full-table .fi-ta-cell.orders-table-col-status {
-            width: 11%;
-            min-width: 9rem;
-            white-space: normal;
-        }
-
-        .fi-body.orders-index-full-table .fi-ta-cell.orders-table-col-phone .fi-input,
-        .fi-body.orders-index-full-table .fi-ta-cell.orders-table-col-city .fi-input {
-            width: 100%;
-            min-width: 0;
-            min-height: 2.25rem;
-            font-size: 0.875rem;
-            line-height: 1.4;
         }
     }
 }

@@ -8,7 +8,9 @@ use Filament\Actions;
 use Filament\Resources\Pages\ListRecords;
 use Filament\Schemas\Components\Tabs\Tab;
 use Filament\Support\Enums\Width;
+use Illuminate\Contracts\Support\Htmlable;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\HtmlString;
 
 class ListOrders extends ListRecords
 {
@@ -17,8 +19,13 @@ class ListOrders extends ListRecords
     protected Width|string|null $maxContentWidth = Width::Full;
 
     protected array $extraBodyAttributes = [
-        'class' => 'orders-index-full-table',
+        'class' => 'orders-index-full-table orders-table-compact',
     ];
+
+    public function getHeading(): string|Htmlable|null
+    {
+        return new HtmlString('<span style="color: #ff751f;">الطلبيات</span>');
+    }
 
     protected function getHeaderActions(): array
     {
