@@ -253,6 +253,55 @@
                 @endif
 
                 @php
+                    $specifications = collect($product->specifications ?? [])
+                        ->filter(fn ($item) => is_array($item) && filled($item['name'] ?? null) && filled($item['value'] ?? null))
+                        ->values();
+                    $detailImages = array_slice($product->detailImageUrls(), 0, 4);
+                @endphp
+
+                @if($specifications->isNotEmpty())
+                    <section class="mt-10 rounded-2xl border border-zinc-100 bg-white p-6 shadow-sm">
+                        <h2 class="text-base font-semibold text-zinc-900">مواصفات المنتج</h2>
+                        <dl class="mt-4 divide-y divide-zinc-100">
+                            @foreach($specifications as $spec)
+                                <div class="grid grid-cols-2 gap-4 py-3 text-sm">
+                                    <dt class="font-medium text-zinc-800">{{ $spec['name'] }}</dt>
+                                    <dd class="text-zinc-600">{{ $spec['value'] }}</dd>
+                                </div>
+                            @endforeach
+                        </dl>
+                    </section>
+                @endif
+
+                @if(filled($product->long_description))
+                    <section class="mt-8 rounded-2xl border border-zinc-100 bg-white p-6 shadow-sm">
+                        <h2 class="text-base font-semibold text-zinc-900">الوصف الطويل</h2>
+                        <div class="mt-4 text-sm leading-relaxed text-zinc-700">
+                            {!! nl2br(e($product->long_description)) !!}
+                        </div>
+                    </section>
+                @endif
+
+                @if(count($detailImages) > 0)
+                    <section class="mt-8 rounded-2xl border border-zinc-100 bg-white p-6 shadow-sm">
+                        <h2 class="text-base font-semibold text-zinc-900">صور المنتج</h2>
+                        <div class="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+                            @foreach($detailImages as $url)
+                                <div class="overflow-hidden rounded-xl border border-zinc-100 bg-zinc-50">
+                                    <img
+                                        src="{{ $url }}"
+                                        alt="{{ $product->name }}"
+                                        class="aspect-square w-full object-cover"
+                                        loading="lazy"
+                                        onerror="this.onerror=null;this.src='{{ asset('images/placeholder-product.svg') }}';"
+                                    >
+                                </div>
+                            @endforeach
+                        </div>
+                    </section>
+                @endif
+
+                @php
                     $upsell = $product->upsellProduct;
                     $showBundle = $upsell
                         && $product->inStock()

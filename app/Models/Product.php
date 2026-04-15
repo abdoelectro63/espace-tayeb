@@ -33,9 +33,12 @@ class Product extends Model
         'code',
         'slug',
         'description',
+        'long_description',
+        'specifications',
         'price',
         'discount_price',
         'images',
+        'detail_images',
         'main_image',
         'image',
         'is_active',
@@ -247,6 +250,8 @@ class Product extends Model
 
     protected $casts = [
         'images' => 'array', // سيقوم لارافل بتحويل JSON إلى مصفوفة تلقائياً
+        'detail_images' => 'array',
+        'specifications' => 'array',
         'free_shipping' => 'boolean',
         'track_stock' => 'boolean',
         'offer_value' => 'decimal:2',
@@ -395,6 +400,22 @@ class Product extends Model
         }
 
         return collect($this->images)
+            ->filter()
+            ->map(fn ($path) => self::publicAssetUrl((string) $path))
+            ->values()
+            ->all();
+    }
+
+    /**
+     * @return list<string>
+     */
+    public function detailImageUrls(): array
+    {
+        if (! is_array($this->detail_images)) {
+            return [];
+        }
+
+        return collect($this->detail_images)
             ->filter()
             ->map(fn ($path) => self::publicAssetUrl((string) $path))
             ->values()

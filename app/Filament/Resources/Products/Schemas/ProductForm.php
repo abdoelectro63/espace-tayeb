@@ -55,6 +55,34 @@ class ProductForm
                             ->columnSpanFull(),
                     ])->columns(2),
 
+                Section::make('تفاصيل صفحة المنتج')
+                    ->description('هذه البيانات تظهر أسفل زر أضف إلى السلة في صفحة المنتج.')
+                    ->schema([
+                        Forms\Components\Repeater::make('specifications')
+                            ->label('مواصفات المنتج')
+                            ->schema([
+                                Forms\Components\TextInput::make('name')
+                                    ->label('الاسم')
+                                    ->required()
+                                    ->maxLength(255),
+                                Forms\Components\TextInput::make('value')
+                                    ->label('القيمة')
+                                    ->required()
+                                    ->maxLength(255),
+                            ])
+                            ->columns(2)
+                            ->defaultItems(0)
+                            ->addActionLabel('إضافة مواصفة')
+                            ->collapsible()
+                            ->columnSpanFull(),
+
+                        Forms\Components\Textarea::make('long_description')
+                            ->label('الوصف الطويل')
+                            ->rows(8)
+                            ->columnSpanFull(),
+                    ])
+                    ->columns(1),
+
                 Section::make('الأسعار والعروض')
                     ->schema([
                         Forms\Components\TextInput::make('price')
@@ -209,6 +237,25 @@ class ProductForm
                             })
                             ->deleteUploadedFileUsing(PublicDiskFileCleanup::filamentDeleteUploadedFile())
                             ->helperText('نفس المعالجة: WebP، عرض أقصى 1000px، جودة 80%.')
+                            ->columnSpanFull(),
+
+                        Forms\Components\FileUpload::make('detail_images')
+                            ->label('صور قسم التفاصيل (4 صور)')
+                            ->image()
+                            ->disk('public')
+                            ->visibility('public')
+                            ->maxSize(5120)
+                            ->acceptedFileTypes(['image/jpeg', 'image/png', 'image/webp', 'image/gif'])
+                            ->multiple()
+                            ->maxFiles(4)
+                            ->reorderable()
+                            ->appendFiles()
+                            ->directory('products/details')
+                            ->saveUploadedFileUsing(function (BaseFileUpload $component, TemporaryUploadedFile $file): ?string {
+                                return ImageOptimizer::processAndStore($file, 'products/details', 'detail_images');
+                            })
+                            ->deleteUploadedFileUsing(PublicDiskFileCleanup::filamentDeleteUploadedFile())
+                            ->helperText('تظهر أسفل زر أضف إلى السلة في المتجر. الحد الأقصى 4 صور.')
                             ->columnSpanFull(),
                     ]),
             ]);
