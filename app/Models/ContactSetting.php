@@ -9,6 +9,7 @@ class ContactSetting extends Model
     protected $fillable = [
         'page_title',
         'phone',
+        'whatsapp_phone',
         'email',
         'address',
         'map_embed_html',
@@ -30,6 +31,7 @@ class ContactSetting extends Model
         return static::query()->create([
             'page_title' => 'اتصل بنا',
             'phone' => null,
+            'whatsapp_phone' => '212699464280',
             'email' => null,
             'address' => null,
             'map_embed_html' => null,

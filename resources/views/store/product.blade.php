@@ -89,6 +89,10 @@
                             'price' => $product->finalUnitPriceForCart($v->id),
                         ])->values()->all()
                         : [];
+                    $contactSettings = \App\Models\ContactSetting::settings();
+                    $whatsappPhone = filled($contactSettings->whatsapp_phone) ? $contactSettings->whatsapp_phone : '212699464280';
+                    $whatsappMessage = 'Bonjour je veux acheter '.$product->name;
+                    $whatsappUrl = 'https://wa.me/'.preg_replace('/\D+/', '', $whatsappPhone).'?text='.urlencode($whatsappMessage);
                 @endphp
 
                 @if(! $hasVariations)
@@ -247,6 +251,20 @@
                             <span>أضف إلى السلة</span>
                         </button>
                     </form>
+                    <a
+                        href="{{ $whatsappUrl }}"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        class="mt-3 inline-flex w-full min-h-[52px] items-center justify-center gap-2.5 rounded-full px-8 py-4 text-base font-semibold text-white transition sm:w-auto sm:min-w-[200px]"
+                        style="background-color:#25D366;color:#fff;box-shadow:0 10px 24px rgba(37,211,102,.35);"
+                        onmouseover="this.style.backgroundColor='#1da851';this.style.boxShadow='0 12px 26px rgba(37,211,102,.40)'"
+                        onmouseout="this.style.backgroundColor='#25D366';this.style.boxShadow='0 10px 24px rgba(37,211,102,.35)'"
+                    >
+                        <svg class="h-5 w-5 shrink-0" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                            <path d="M19.11 4.89A9.88 9.88 0 0012.06 2C6.59 2 2.14 6.44 2.14 11.91c0 1.75.46 3.45 1.34 4.94L2 22l5.32-1.4a9.84 9.84 0 004.74 1.21h.01c5.47 0 9.91-4.45 9.91-9.91 0-2.65-1.03-5.14-2.87-7.01zM12.07 20.1h-.01a8.14 8.14 0 01-4.15-1.14l-.3-.18-3.16.83.84-3.08-.2-.32a8.2 8.2 0 01-1.26-4.3c0-4.53 3.69-8.22 8.23-8.22a8.18 8.18 0 015.82 2.42 8.14 8.14 0 012.4 5.8c0 4.53-3.69 8.2-8.21 8.2zm4.51-6.16c-.25-.13-1.46-.72-1.69-.8-.23-.08-.39-.13-.56.12-.16.25-.64.8-.79.97-.14.17-.29.19-.54.06-.25-.13-1.05-.39-2-1.23-.74-.66-1.24-1.47-1.39-1.72-.14-.25-.01-.39.11-.52.11-.11.25-.29.37-.43.12-.14.16-.25.25-.41.08-.17.04-.31-.02-.43-.07-.13-.56-1.35-.76-1.85-.2-.48-.4-.42-.56-.43h-.48c-.17 0-.43.06-.65.31-.22.25-.85.83-.85 2.03s.88 2.36 1 2.52c.12.17 1.73 2.65 4.2 3.71.59.25 1.05.4 1.41.52.6.19 1.15.16 1.59.1.49-.07 1.46-.6 1.67-1.18.21-.58.21-1.08.15-1.18-.06-.1-.23-.16-.48-.29z"/>
+                        </svg>
+                        <span>اشتري عبر واتساب</span>
+                    </a>
                     @if($hasVariations)
                         </div>
                     @endif

@@ -48,6 +48,7 @@ class ContactPageSettings extends Page
         $this->contactData = [
             'page_title' => $c->page_title,
             'phone' => $c->phone,
+            'whatsapp_phone' => $c->whatsapp_phone ?: '212699464280',
             'email' => $c->email,
             'address' => $c->address,
             'map_embed_html' => $c->map_embed_html,
@@ -73,6 +74,12 @@ class ContactPageSettings extends Page
                 TextInput::make('phone')
                     ->label('الهاتف')
                     ->tel()
+                    ->maxLength(100),
+                TextInput::make('whatsapp_phone')
+                    ->label('رقم واتساب')
+                    ->tel()
+                    ->default('212699464280')
+                    ->helperText('يستخدم في زر "اشتري عبر واتساب" في صفحة المنتج.')
                     ->maxLength(100),
                 TextInput::make('email')
                     ->label('البريد الإلكتروني')
@@ -137,6 +144,7 @@ class ContactPageSettings extends Page
         $c->fill([
             'page_title' => (string) ($state['page_title'] ?? 'اتصل بنا'),
             'phone' => filled($state['phone'] ?? null) ? (string) $state['phone'] : null,
+            'whatsapp_phone' => filled($state['whatsapp_phone'] ?? null) ? (string) $state['whatsapp_phone'] : '212699464280',
             'email' => filled($state['email'] ?? null) ? (string) $state['email'] : null,
             'address' => filled($state['address'] ?? null) ? (string) $state['address'] : null,
             'map_embed_html' => filled($state['map_embed_html'] ?? null) ? (string) $state['map_embed_html'] : null,
