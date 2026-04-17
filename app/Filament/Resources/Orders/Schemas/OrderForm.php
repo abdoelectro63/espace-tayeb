@@ -79,13 +79,33 @@ class OrderForm
                                 'pending' => 'قيد الانتظار',
                                 'confirmed' => 'تم التأكيد',
                                 'no_response' => 'لا يجيب',
+                                'postponed' => 'تأجيل',
                                 'cancelled' => 'ملغي',
                                 'shipped' => 'في الطريق',
                                 'delivered' => 'تم التوصيل',
                                 'completed' => 'مغلقة (تحصيل من الموزع)',
                             ])
                             ->default('pending')
+                            ->live()
+                            ->afterStateUpdated(function (Set $set, mixed $state): void {
+                                if ($state !== 'postponed') {
+                                    $set('postponed_at', null);
+                                    $set('postponed_reason', null);
+                                }
+                            })
                             ->required(),
+
+                        Forms\Components\DatePicker::make('postponed_at')
+                            ->label('تاريخ التأجيل')
+                            ->native(false)
+                            ->visible(fn (Get $get): bool => $get('status') === 'postponed')
+                            ->required(fn (Get $get): bool => $get('status') === 'postponed'),
+
+                        Forms\Components\Textarea::make('postponed_reason')
+                            ->label('سبب التأجيل')
+                            ->rows(3)
+                            ->visible(fn (Get $get): bool => $get('status') === 'postponed')
+                            ->columnSpanFull(),
 
                         Forms\Components\TextInput::make('customer_name')
                             ->label('اسم الزبون')

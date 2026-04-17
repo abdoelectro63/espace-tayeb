@@ -56,6 +56,12 @@ class ListOrders extends ListRecords
                     ->withoutTrashed()
                     ->where('status', 'no_response')),
 
+            'postponed' => Tab::make('طلبيات مؤجلة')
+                ->label('طلبيات مؤجلة')
+                ->modifyQueryUsing(fn (Builder $query) => $query
+                    ->withoutTrashed()
+                    ->where('status', 'postponed')),
+
             'delivered' => Tab::make('تم التسليم')
                 ->label('الطلبات المسلمة')
                 ->modifyQueryUsing(fn (Builder $query) => $query

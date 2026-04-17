@@ -21,6 +21,9 @@ use Filament\Actions\RestoreBulkAction;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\Textarea;
+use Filament\Schemas\Components\Utilities\Get;
+use Filament\Schemas\Components\Utilities\Set;
 use Filament\Notifications\Notification;
 use Filament\Support\Enums\Alignment;
 use Filament\Tables;
@@ -118,6 +121,21 @@ class OrdersTable
                     ->extraHeaderAttributes(['class' => 'orders-table-col-total'])
                     ->extraCellAttributes(['class' => 'orders-table-col-total'])
                     ->extraAttributes(['class' => 'text-xs tabular-nums']),
+                TextColumn::make('postponed_at')
+                    ->label('تاريخ التأجيل')
+                    ->dateTime('d/m/Y H:i')
+                    ->sortable()
+                    ->placeholder('-')
+                    ->visible(fn (): bool => (Livewire::current()?->activeTab ?? null) === 'postponed')
+                    ->extraAttributes(['class' => 'text-xs tabular-nums']),
+                TextColumn::make('postponed_reason')
+                    ->label('سبب التأجيل')
+                    ->wrap()
+                    ->limit(50)
+                    ->tooltip(fn (Order $record): ?string => filled($record->postponed_reason) ? (string) $record->postponed_reason : null)
+                    ->placeholder('-')
+                    ->visible(fn (): bool => (Livewire::current()?->activeTab ?? null) === 'postponed')
+                    ->extraAttributes(['class' => 'text-xs']),
 
                 SelectColumn::make('status')
                     ->label('تغيير الحالة')
@@ -138,14 +156,34 @@ class OrdersTable
                         'pending' => 'انتظار',
                         'confirmed' => 'تأكيد',
                         'no_response' => 'لا جواب',
+                        'postponed' => 'تأجيل',
                         'cancelled' => 'ملغي',
                     ])
+                    ->updateStateUsing(function (Order $record, string $state): string {
+                        if ($state !== 'postponed') {
+                            return $state;
+                        }
+
+                        $livewire = Livewire::current();
+
+                        if ($livewire !== null && method_exists($livewire, 'mountTableAction')) {
+                            $livewire->mountTableAction('changeStatus', (string) $record->getKey(), [
+                                'status' => 'postponed',
+                                'postponed_at' => $record->postponed_at?->toDateString(),
+                                'postponed_reason' => $record->postponed_reason,
+                            ]);
+                        }
+
+                        // Keep old status in inline edit; postponed is confirmed only via popup submit.
+                        return (string) $record->status;
+                    })
                     ->extraInputAttributes(function ($state): array {
                         $state = mb_strtolower(trim((string) $state));
                         [$bg, $text] = match ($state) {
                             'pending', 'waiting', 'en attente', 'انتظار' => ['#fff', '#000'],
                             'confirmed', 'confirme', 'تأكيد' => ['#16a34a', '#111827'],
                             'no_response', 'no_answer', 'pas de reponse', 'لا جواب' => ['#f97316', '#111827'],
+                            'postponed', 'postpone', 'تأجيل' => ['#eab308', '#111827'],
                             'pending', 'waiting', 'en attente', 'انتظار' => ['#6b7280', '#111827'],
                             'shipped', 'expedie', 'تم الشحن' => ['#2EFFF9', '#111827'],
                             'cancelled', 'annule', 'ملغي' => ['#FF0000', '#000'],
@@ -364,6 +402,9 @@ class OrdersTable
                     ->options([
                         'pending' => 'انتظار',
                         'confirmed' => 'تأكيد',
+                        'no_response' => 'لا جواب',
+                        'postponed' => 'تأجيل',
+                        'cancelled' => 'ملغي',
                     ]),
             ])
             ->recordActions([
@@ -379,6 +420,54 @@ class OrdersTable
                     ->modalContent(fn ($record) => view('filament.orders.products-modal', [
                         'items' => $record->orderItems,
                     ])),
+                Action::make('changeStatus')
+                    ->label('تغيير حالة')
+                    ->icon('heroicon-o-arrow-path')
+                    ->color('warning')
+                    ->hidden(fn (): bool => (Livewire::current()?->activeTab ?? null) === 'trash')
+                    ->visible(fn (): bool => (Livewire::current()?->activeTab ?? null) !== 'delivered')
+                    ->fillForm(fn (Order $record): array => [
+                        'status' => $record->status,
+                        'postponed_at' => $record->postponed_at?->toDateString(),
+                        'postponed_reason' => $record->postponed_reason,
+                    ])
+                    ->form([
+                        Select::make('status')
+                            ->label('تغيير حالة')
+                            ->options([
+                                'pending' => 'انتظار',
+                                'confirmed' => 'تأكيد',
+                                'no_response' => 'لا جواب',
+                                'postponed' => 'تأجيل',
+                                'cancelled' => 'ملغي',
+                            ])
+                            ->required()
+                            ->live()
+                            ->afterStateUpdated(function (Set $set, mixed $state): void {
+                                if ($state !== 'postponed') {
+                                    $set('postponed_at', null);
+                                    $set('postponed_reason', null);
+                                }
+                            }),
+                        DatePicker::make('postponed_at')
+                            ->label('تاريخ التأجيل')
+                            ->native(false)
+                            ->visible(fn (Get $get): bool => $get('status') === 'postponed')
+                            ->required(fn (Get $get): bool => $get('status') === 'postponed'),
+                        Textarea::make('postponed_reason')
+                            ->label('سبب التأجيل')
+                            ->rows(3)
+                            ->visible(fn (Get $get): bool => $get('status') === 'postponed'),
+                    ])
+                    ->action(function (Order $record, array $data): void {
+                        $isPostponed = ($data['status'] ?? null) === 'postponed';
+
+                        $record->update([
+                            'status' => $data['status'] ?? $record->status,
+                            'postponed_at' => $isPostponed ? ($data['postponed_at'] ?? null) : null,
+                            'postponed_reason' => $isPostponed ? ($data['postponed_reason'] ?? null) : null,
+                        ]);
+                    }),
                 DeleteAction::make()
                     ->iconButton()
                     ->label('')

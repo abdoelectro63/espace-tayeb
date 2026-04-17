@@ -20,6 +20,7 @@ class Order extends Model
         'pending',
         'confirmed',
         'no_response',
+        'postponed',
         'cancelled',
         'shipped',
         'delivered',
@@ -62,6 +63,7 @@ class Order extends Model
         'shipping_fee', 'delivery_fee', 'shipping_zone',
         'sort_order',
         'status', 'notes', 'delivery_man_id', 'payment_status', 'paid_at',
+        'postponed_at', 'postponed_reason',
         'shipping_company', 'shipping_company_id', 'tracking_number', 'shipping_provider_status',
         'invoice_status', 'invoiced_at',
         'invoice_client_company_name', 'invoice_client_ice', 'invoice_client_if', 'invoice_client_rc',
@@ -71,6 +73,7 @@ class Order extends Model
 
     protected $casts = [
         'paid_at' => 'datetime',
+        'postponed_at' => 'datetime',
         'invoiced_at' => 'datetime',
         'sort_order' => 'integer',
         'shipping_fee' => 'decimal:2',
