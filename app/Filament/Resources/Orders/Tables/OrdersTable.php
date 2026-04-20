@@ -166,6 +166,12 @@ class OrdersTable
                     ])
                     ->updateStateUsing(function (Order $record, string $state): string {
                         if ($state !== 'postponed') {
+                            $record->update([
+                                'status' => $state,
+                                'postponed_at' => null,
+                                'postponed_reason' => null,
+                            ]);
+
                             return $state;
                         }
 
