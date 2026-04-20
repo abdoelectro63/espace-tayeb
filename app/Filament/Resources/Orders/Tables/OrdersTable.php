@@ -158,6 +158,11 @@ class OrdersTable
                         'no_response' => 'لا جواب',
                         'postponed' => 'تأجيل',
                         'cancelled' => 'ملغي',
+                        'shipped' => 'تم الشحن',
+                        'delivered' => 'تم التسليم',
+                        'refuse' => 'مرفوض',
+                        'reporter' => 'مؤجل',
+                        'completed' => 'مغلق',
                     ])
                     ->updateStateUsing(function (Order $record, string $state): string {
                         if ($state !== 'postponed') {
@@ -184,7 +189,7 @@ class OrdersTable
                             'confirmed', 'confirme', 'تأكيد' => ['#16a34a', '#111827'],
                             'no_response', 'no_answer', 'pas de reponse', 'لا جواب' => ['#f97316', '#111827'],
                             'postponed', 'postpone', 'تأجيل' => ['#eab308', '#111827'],
-                            'pending', 'waiting', 'en attente', 'انتظار' => ['#6b7280', '#111827'],
+                            'completed', 'cloture', 'مغلق' => ['#6b7280', '#111827'],
                             'shipped', 'expedie', 'تم الشحن' => ['#2EFFF9', '#111827'],
                             'cancelled', 'annule', 'ملغي' => ['#FF0000', '#000'],
                             default => ['#6b7280', '#111827'],
@@ -440,6 +445,11 @@ class OrdersTable
                                 'no_response' => 'لا جواب',
                                 'postponed' => 'تأجيل',
                                 'cancelled' => 'ملغي',
+                                'shipped' => 'تم الشحن',
+                                'delivered' => 'تم التسليم',
+                                'refuse' => 'مرفوض',
+                                'reporter' => 'مؤجل',
+                                'completed' => 'مغلق',
                             ])
                             ->required()
                             ->live()
