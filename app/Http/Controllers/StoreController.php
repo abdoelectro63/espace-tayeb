@@ -13,17 +13,43 @@ class StoreController extends Controller
 {
     public function index(): View
     {
-        $branding = Cache::remember('store:index:branding:v1', now()->addMinutes(10), fn () => ShippingSetting::query()->first());
-        $categories = Cache::remember('store:index:categories:v1', now()->addMinutes(10), fn () => Category::query()
-            ->orderBy('name')
-            ->get());
+        $brandingId = Cache::remember(
+            'store:index:branding-id:v2',
+            now()->addMinutes(10),
+            fn () => ShippingSetting::query()->value('id')
+        );
+        $branding = $brandingId ? ShippingSetting::query()->find($brandingId) : null;
 
-        $featuredProducts = Cache::remember('store:index:featured-products:v1', now()->addMinutes(5), fn () => Product::query()
-            ->where('is_active', true)
-            ->with(['category', 'upsellParents'])
-            ->latest()
-            ->limit(8)
-            ->get());
+        $categoryIds = Cache::remember(
+            'store:index:category-ids:v2',
+            now()->addMinutes(10),
+            fn () => Category::query()->orderBy('name')->pluck('id')->all()
+        );
+        $categories = empty($categoryIds)
+            ? collect()
+            : Category::query()
+                ->whereIn('id', $categoryIds)
+                ->orderBy('name')
+                ->get();
+
+        $featuredProductIds = Cache::remember(
+            'store:index:featured-product-ids:v2',
+            now()->addMinutes(5),
+            fn () => Product::query()
+                ->where('is_active', true)
+                ->latest()
+                ->limit(8)
+                ->pluck('id')
+                ->all()
+        );
+        $featuredProducts = empty($featuredProductIds)
+            ? collect()
+            : Product::query()
+                ->whereIn('id', $featuredProductIds)
+                ->with(['category', 'upsellParents'])
+                ->get()
+                ->sortBy(fn (Product $product) => array_search($product->id, $featuredProductIds, true))
+                ->values();
 
         return view('store.index', [
             'branding' => $branding,
@@ -129,18 +155,13 @@ class StoreController extends Controller
             now()->addMinutes(10),
             fn () => $category->selfAndDescendantCategoryIds()
         );
-        $currentPage = max(1, (int) request()->query('page', 1));
-        $products = Cache::remember(
-            'store:category:'.$category->id.':page:'.$currentPage.':v1',
-            now()->addMinutes(3),
-            fn () => Product::query()
-                ->whereIn('category_id', $categoryIds)
-                ->where('is_active', true)
-                ->with(['category', 'upsellParents'])
-                ->latest()
-                ->paginate(12)
-                ->withQueryString()
-        );
+        $products = Product::query()
+            ->whereIn('category_id', $categoryIds)
+            ->where('is_active', true)
+            ->with(['category', 'upsellParents'])
+            ->latest()
+            ->paginate(12)
+            ->withQueryString();
 
         return view('store.category', [
             'category' => $category,
