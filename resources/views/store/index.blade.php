@@ -8,7 +8,7 @@
 
     <section class="relative overflow-hidden border-b border-orange-900/10 bg-gradient-to-bl from-emerald-800 via-emerald-900 to-zinc-900 text-white">
         @if($bannerUrl)
-            <img src="{{ $bannerUrl }}" alt="" class="absolute inset-0 h-full w-full object-cover" loading="lazy">
+            <img src="{{ $bannerUrl }}" alt="" class="absolute inset-0 h-full w-full object-cover" loading="eager" fetchpriority="high" decoding="async">
             <div class="absolute inset-0 bg-black/45"></div>
         @endif
         <div class="pointer-events-none absolute -left-32 top-0 h-96 w-96 rounded-full bg-orange-500/20 blur-3xl"></div>
@@ -55,6 +55,8 @@
                                         alt=""
                                         class="max-h-full max-w-full object-contain"
                                         loading="lazy"
+                                        width="104"
+                                        height="80"
                                     />
                                 </span>
                             @elseif($category->icon)

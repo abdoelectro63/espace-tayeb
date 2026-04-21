@@ -8,6 +8,9 @@
                 alt="{{ $product->name }}"
                 class="h-full w-full object-cover transition duration-300 group-hover:scale-[1.03]"
                 loading="lazy"
+                decoding="async"
+                width="600"
+                height="600"
                 onerror="this.onerror=null;this.src='{{ asset('images/placeholder-product.svg') }}';"
             >
             @if($product->isOnSale())

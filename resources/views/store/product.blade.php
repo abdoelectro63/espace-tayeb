@@ -56,6 +56,10 @@
                         src="{{ $product->mainImageUrl() }}"
                         alt="{{ $product->name }}"
                         class="aspect-square w-full object-cover"
+                        width="900"
+                        height="900"
+                        fetchpriority="high"
+                        decoding="async"
                         onerror="this.onerror=null;this.src='{{ asset('images/placeholder-product.svg') }}';"
                     >
                 </div>
@@ -66,7 +70,7 @@
                     <div class="grid grid-cols-4 gap-2 sm:gap-3">
                         @foreach($gallery as $url)
                             <button type="button" class="overflow-hidden rounded-lg border border-zinc-100 bg-zinc-50" onclick="document.querySelector('[data-main-product-img]').src='{{ $url }}'">
-                                <img src="{{ $url }}" alt="" class="aspect-square w-full object-cover" loading="lazy" onerror="this.onerror=null;this.src='{{ asset('images/placeholder-product.svg') }}';">
+                                <img src="{{ $url }}" alt="" class="aspect-square w-full object-cover" loading="lazy" decoding="async" width="200" height="200" onerror="this.onerror=null;this.src='{{ asset('images/placeholder-product.svg') }}';">
                             </button>
                         @endforeach
                     </div>
@@ -449,6 +453,8 @@
                                             class="h-full w-full object-cover"
                                             loading="lazy"
                                             decoding="async"
+                                            width="112"
+                                            height="112"
                                             onerror="this.onerror=null;this.src='{{ asset('images/placeholder-product.svg') }}';"
                                         >
                                     </div>
@@ -475,6 +481,8 @@
                                                 class="h-full w-full object-cover"
                                                 loading="lazy"
                                                 decoding="async"
+                                            width="112"
+                                            height="112"
                                                 onerror="this.onerror=null;this.src='{{ asset('images/placeholder-product.svg') }}';"
                                             >
                                         </div>
