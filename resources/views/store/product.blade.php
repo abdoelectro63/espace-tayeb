@@ -147,6 +147,10 @@
                     $purchaseDefaultUnitPrice = $hasVariations
                         ? (float) ($defaultVariation ? $product->finalUnitPriceForCart($defaultVariation->id) : ($variationOptions[0]['price'] ?? 0))
                         : (float) $product->final_price;
+                    $shippingSettings = \App\Models\ShippingSetting::query()->first();
+                    $purchaseCasablancaFee = (float) ($shippingSettings?->casablanca_fee ?? 20);
+                    $purchaseOtherCitiesFee = (float) ($shippingSettings?->other_cities_fee ?? 40);
+                    $isPurchaseFreeShipping = $product->qualifiesForFreeShipping();
                 @endphp
 
                 <div class="mt-6 flex flex-wrap gap-3 text-sm">
@@ -269,6 +273,9 @@
                             data-base-price="{{ number_format($purchaseDefaultUnitPrice, 2, '.', '') }}"
                             data-has-variations="{{ $hasVariations ? '1' : '0' }}"
                             data-variation-prices='@json($purchasePriceMap)'
+                            data-casablanca-fee="{{ number_format($purchaseCasablancaFee, 2, '.', '') }}"
+                            data-other-fee="{{ number_format($purchaseOtherCitiesFee, 2, '.', '') }}"
+                            data-free-shipping="{{ $isPurchaseFreeShipping ? '1' : '0' }}"
                         >
                             <svg class="h-5 w-5 shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor" aria-hidden="true">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-2.25 0h13.5a1.5 1.5 0 011.5 1.5v7.5a1.5 1.5 0 01-1.5 1.5H5.25a1.5 1.5 0 01-1.5-1.5v-7.5a1.5 1.5 0 011.5-1.5z" />
@@ -293,7 +300,20 @@
                             <form id="purchase-now-form" class="space-y-4 px-5 py-5 sm:px-6 sm:py-6">
                                 <div class="rounded-xl border border-emerald-100 bg-emerald-50/50 p-3">
                                     <p id="purchase-now-product-name" class="text-sm font-semibold text-zinc-900"></p>
-                                    <p class="mt-1 text-sm text-zinc-600">السعر الإجمالي: <span id="purchase-now-total" class="font-bold text-emerald-700"></span></p>
+                                    <div class="mt-2 space-y-1.5 text-sm">
+                                        <p class="flex items-center justify-between text-zinc-600">
+                                            <span>مجموع المنتجات</span>
+                                            <span id="purchase-now-subtotal" class="font-semibold text-zinc-900"></span>
+                                        </p>
+                                        <p class="flex items-center justify-between text-zinc-600">
+                                            <span>رسوم التوصيل</span>
+                                            <span id="purchase-now-shipping" class="font-semibold text-zinc-900"></span>
+                                        </p>
+                                        <p class="flex items-center justify-between border-t border-emerald-200 pt-1 text-zinc-700">
+                                            <span class="font-semibold">المجموع الكلي</span>
+                                            <span id="purchase-now-total" class="text-base font-bold text-emerald-700"></span>
+                                        </p>
+                                    </div>
                                 </div>
                                 <div class="grid gap-4 sm:grid-cols-2">
                                     <div class="sm:col-span-2">

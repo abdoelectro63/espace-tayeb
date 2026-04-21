@@ -820,11 +820,16 @@ function initPurchaseNowModal() {
     }
 
     const nameEl = document.getElementById('purchase-now-product-name');
+    const subtotalEl = document.getElementById('purchase-now-subtotal');
+    const shippingEl = document.getElementById('purchase-now-shipping');
     const totalEl = document.getElementById('purchase-now-total');
     const zoneEl = document.getElementById('purchase-shipping-zone');
     const cityWrap = document.getElementById('purchase-city-wrap');
     const cityInput = document.getElementById('purchase-city');
     const sourceForm = document.getElementById('product-add-cart-form');
+    const casablancaFee = Number.parseFloat(trigger.dataset.casablancaFee || '0') || 0;
+    const otherFee = Number.parseFloat(trigger.dataset.otherFee || '0') || 0;
+    const hasFreeShipping = trigger.dataset.freeShipping === '1';
 
     function currentQuantity() {
         const qty = Number.parseInt(sourceForm?.querySelector('input[name="quantity"]')?.value || '1', 10);
@@ -854,9 +859,18 @@ function initPurchaseNowModal() {
     function refreshModalSummary() {
         const qty = currentQuantity();
         const unit = currentUnitPrice();
-        const total = unit * qty;
+        const subtotal = unit * qty;
+        const shipping =
+            hasFreeShipping ? 0 : zoneEl?.value === 'other' ? otherFee : casablancaFee;
+        const total = subtotal + shipping;
         if (nameEl) {
             nameEl.textContent = `${trigger.dataset.productName || ''} × ${qty}`;
+        }
+        if (subtotalEl) {
+            subtotalEl.textContent = `${subtotal.toFixed(2)} MAD`;
+        }
+        if (shippingEl) {
+            shippingEl.textContent = hasFreeShipping ? '0.00 MAD (Free)' : `${shipping.toFixed(2)} MAD`;
         }
         if (totalEl) {
             totalEl.textContent = `${total.toFixed(2)} MAD`;
@@ -891,7 +905,12 @@ function initPurchaseNowModal() {
         el.addEventListener('click', closeModal);
     });
     trigger.addEventListener('click', openModal);
-    zoneEl?.addEventListener('change', syncCityVisibility);
+    zoneEl?.addEventListener('change', () => {
+        syncCityVisibility();
+        refreshModalSummary();
+    });
+    sourceForm?.querySelector('input[name="quantity"]')?.addEventListener('input', refreshModalSummary);
+    sourceForm?.querySelector('select[name="product_variation_id"]')?.addEventListener('change', refreshModalSummary);
     syncCityVisibility();
 
     document.addEventListener('keydown', (e) => {
