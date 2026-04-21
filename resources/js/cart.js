@@ -807,8 +807,158 @@ function initCartPageQuantity() {
     });
 }
 
+function initPurchaseNowModal() {
+    if (typeof window.axios === 'undefined') {
+        return;
+    }
+
+    const trigger = document.querySelector('[data-purchase-now-trigger]');
+    const modal = document.getElementById('purchase-now-modal');
+    const form = document.getElementById('purchase-now-form');
+    if (!trigger || !modal || !form) {
+        return;
+    }
+
+    const nameEl = document.getElementById('purchase-now-product-name');
+    const totalEl = document.getElementById('purchase-now-total');
+    const zoneEl = document.getElementById('purchase-shipping-zone');
+    const cityWrap = document.getElementById('purchase-city-wrap');
+    const cityInput = document.getElementById('purchase-city');
+    const sourceForm = document.getElementById('product-add-cart-form');
+
+    function currentQuantity() {
+        const qty = Number.parseInt(sourceForm?.querySelector('input[name="quantity"]')?.value || '1', 10);
+        return qty > 0 ? qty : 1;
+    }
+
+    function currentVariationId() {
+        const select = sourceForm?.querySelector('select[name="product_variation_id"]');
+        return select ? select.value : null;
+    }
+
+    function currentUnitPrice() {
+        const hasVariations = trigger.dataset.hasVariations === '1';
+        if (!hasVariations) {
+            return Number.parseFloat(trigger.dataset.basePrice || '0') || 0;
+        }
+
+        const prices = JSON.parse(trigger.dataset.variationPrices || '{}');
+        const vid = currentVariationId();
+        if (vid && prices[vid] !== undefined) {
+            return Number.parseFloat(prices[vid]) || 0;
+        }
+
+        return Number.parseFloat(trigger.dataset.basePrice || '0') || 0;
+    }
+
+    function refreshModalSummary() {
+        const qty = currentQuantity();
+        const unit = currentUnitPrice();
+        const total = unit * qty;
+        if (nameEl) {
+            nameEl.textContent = `${trigger.dataset.productName || ''} × ${qty}`;
+        }
+        if (totalEl) {
+            totalEl.textContent = `${total.toFixed(2)} MAD`;
+        }
+    }
+
+    function openModal() {
+        refreshModalSummary();
+        modal.classList.remove('hidden');
+        document.documentElement.classList.add('overflow-hidden');
+        document.body.classList.add('overflow-hidden');
+    }
+
+    function closeModal() {
+        modal.classList.add('hidden');
+        document.documentElement.classList.remove('overflow-hidden');
+        document.body.classList.remove('overflow-hidden');
+    }
+
+    function syncCityVisibility() {
+        const isOther = zoneEl?.value === 'other';
+        cityWrap?.classList.toggle('hidden', !isOther);
+        if (cityInput) {
+            cityInput.required = Boolean(isOther);
+            if (!isOther) {
+                cityInput.value = '';
+            }
+        }
+    }
+
+    modal.querySelectorAll('[data-purchase-now-close]').forEach((el) => {
+        el.addEventListener('click', closeModal);
+    });
+    trigger.addEventListener('click', openModal);
+    zoneEl?.addEventListener('change', syncCityVisibility);
+    syncCityVisibility();
+
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && !modal.classList.contains('hidden')) {
+            closeModal();
+        }
+    });
+
+    form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+
+        const submitBtn = form.querySelector('button[type="submit"]');
+        if (submitBtn instanceof HTMLButtonElement) {
+            submitBtn.disabled = true;
+            submitBtn.classList.add('opacity-60', 'pointer-events-none');
+        }
+
+        try {
+            const addFd = new FormData();
+            addFd.append('product_id', trigger.dataset.productId || '');
+            addFd.append('quantity', String(currentQuantity()));
+            const variationId = currentVariationId();
+            if (variationId) {
+                addFd.append('product_variation_id', variationId);
+            }
+
+            await window.axios.post('/cart', addFd, {
+                headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+            });
+
+            const checkoutUrl = trigger.dataset.checkoutUrl || '/checkout';
+            const csrf = getCsrfToken();
+            const quickForm = document.createElement('form');
+            quickForm.method = 'POST';
+            quickForm.action = checkoutUrl;
+            quickForm.style.display = 'none';
+
+            const values = new FormData(form);
+            values.forEach((value, key) => {
+                const input = document.createElement('input');
+                input.type = 'hidden';
+                input.name = key;
+                input.value = String(value);
+                quickForm.appendChild(input);
+            });
+
+            const csrfInput = document.createElement('input');
+            csrfInput.type = 'hidden';
+            csrfInput.name = '_token';
+            csrfInput.value = csrf;
+            quickForm.appendChild(csrfInput);
+
+            document.body.appendChild(quickForm);
+            quickForm.submit();
+        } catch (err) {
+            showCartToast(extractErrorMessage(err), true);
+            if (submitBtn instanceof HTMLButtonElement) {
+                submitBtn.disabled = false;
+                submitBtn.classList.remove('opacity-60', 'pointer-events-none');
+            }
+        }
+    });
+}
+
 document.addEventListener('DOMContentLoaded', () => {
     initAddToCartForms();
     initCartDrawer();
     initCartPageQuantity();
+    initPurchaseNowModal();
 });

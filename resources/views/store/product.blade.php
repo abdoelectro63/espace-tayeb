@@ -140,6 +140,15 @@
                     </div>
                 @endif
 
+                @php
+                    $purchasePriceMap = $hasVariations
+                        ? $product->variations->mapWithKeys(fn ($v) => [(string) $v->id => (float) $product->finalUnitPriceForCart($v->id)])->all()
+                        : [];
+                    $purchaseDefaultUnitPrice = $hasVariations
+                        ? (float) ($defaultVariation ? $product->finalUnitPriceForCart($defaultVariation->id) : ($variationOptions[0]['price'] ?? 0))
+                        : (float) $product->final_price;
+                @endphp
+
                 <div class="mt-6 flex flex-wrap gap-3 text-sm">
                     @if($product->qualifiesForFreeShipping())
                         <span class="inline-flex items-center gap-2 rounded-full bg-emerald-50 px-3 py-1.5 font-medium text-emerald-800 ring-1 ring-emerald-200/80">
@@ -250,7 +259,73 @@
                             </svg>
                             <span>أضف إلى السلة</span>
                         </button>
+                        <button
+                            type="button"
+                            class="inline-flex w-full min-h-[52px] items-center justify-center gap-2.5 rounded-full bg-gradient-to-r from-emerald-600 to-emerald-500 px-8 py-4 text-base font-semibold text-white shadow-lg shadow-emerald-500/30 transition hover:from-emerald-700 hover:to-emerald-600 sm:w-auto sm:min-w-[220px]"
+                            data-purchase-now-trigger
+                            data-checkout-url="{{ route('store.checkout.store') }}"
+                            data-product-id="{{ $product->id }}"
+                            data-product-name="{{ e($product->name) }}"
+                            data-base-price="{{ number_format($purchaseDefaultUnitPrice, 2, '.', '') }}"
+                            data-has-variations="{{ $hasVariations ? '1' : '0' }}"
+                            data-variation-prices='@json($purchasePriceMap)'
+                        >
+                            <svg class="h-5 w-5 shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor" aria-hidden="true">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-2.25 0h13.5a1.5 1.5 0 011.5 1.5v7.5a1.5 1.5 0 01-1.5 1.5H5.25a1.5 1.5 0 01-1.5-1.5v-7.5a1.5 1.5 0 011.5-1.5z" />
+                            </svg>
+                            <span>شراء الآن</span>
+                        </button>
                     </form>
+                    <div id="purchase-now-modal" class="fixed inset-0 z-[120] hidden">
+                        <div class="absolute inset-0 bg-zinc-950/55 backdrop-blur-[2px]" data-purchase-now-close></div>
+                        <div class="absolute left-1/2 top-1/2 w-[min(94vw,560px)] -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-2xl border border-zinc-100 bg-white shadow-2xl">
+                            <div class="flex items-start justify-between gap-3 border-b border-zinc-100 bg-gradient-to-r from-emerald-50 to-white px-5 py-4">
+                                <div>
+                                    <p class="text-base font-bold text-zinc-900">إتمام الشراء السريع</p>
+                                    <p class="mt-1 text-xs text-zinc-500">أدخل بياناتك وأكد الطلب مباشرة.</p>
+                                </div>
+                                <button type="button" class="rounded-full p-2 text-zinc-500 transition hover:bg-zinc-100 hover:text-zinc-900" data-purchase-now-close aria-label="إغلاق">
+                                    <svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor" aria-hidden="true">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                                    </svg>
+                                </button>
+                            </div>
+                            <form id="purchase-now-form" class="space-y-4 px-5 py-5 sm:px-6 sm:py-6">
+                                <div class="rounded-xl border border-emerald-100 bg-emerald-50/50 p-3">
+                                    <p id="purchase-now-product-name" class="text-sm font-semibold text-zinc-900"></p>
+                                    <p class="mt-1 text-sm text-zinc-600">السعر الإجمالي: <span id="purchase-now-total" class="font-bold text-emerald-700"></span></p>
+                                </div>
+                                <div class="grid gap-4 sm:grid-cols-2">
+                                    <div class="sm:col-span-2">
+                                        <label for="purchase-customer-name" class="block text-sm font-medium text-zinc-700">الاسم الكامل</label>
+                                        <input id="purchase-customer-name" name="customer_name" type="text" required class="mt-1 w-full rounded-xl border border-zinc-200 px-3 py-2.5 text-sm" autocomplete="name">
+                                    </div>
+                                    <div class="sm:col-span-2">
+                                        <label for="purchase-customer-phone" class="block text-sm font-medium text-zinc-700">الهاتف</label>
+                                        <input id="purchase-customer-phone" name="customer_phone" type="tel" required class="mt-1 w-full rounded-xl border border-zinc-200 px-3 py-2.5 text-sm" autocomplete="tel">
+                                    </div>
+                                    <div class="sm:col-span-2">
+                                        <label for="purchase-shipping-zone" class="block text-sm font-medium text-zinc-700">المدينة</label>
+                                        <select id="purchase-shipping-zone" name="shipping_zone" required class="mt-1 w-full rounded-xl border border-zinc-200 bg-white px-3 py-2.5 text-sm font-medium text-zinc-900">
+                                            <option value="casablanca">الدار البيضاء</option>
+                                            <option value="other">مدينة أخرى</option>
+                                        </select>
+                                    </div>
+                                    <div id="purchase-city-wrap" class="sm:col-span-2 hidden">
+                                        <label for="purchase-city" class="block text-sm font-medium text-zinc-700">اسم المدينة</label>
+                                        <input id="purchase-city" name="city" type="text" class="mt-1 w-full rounded-xl border border-zinc-200 px-3 py-2.5 text-sm" autocomplete="address-level2" maxlength="255" placeholder="مثال: فاس، مراكش، طنجة...">
+                                    </div>
+                                    <div class="sm:col-span-2">
+                                        <label for="purchase-shipping-address" class="block text-sm font-medium text-zinc-700">عنوان التوصيل الكامل</label>
+                                        <textarea id="purchase-shipping-address" name="shipping_address" rows="3" required class="mt-1 w-full rounded-xl border border-zinc-200 px-3 py-2.5 text-sm"></textarea>
+                                    </div>
+                                </div>
+                                <button type="submit" class="inline-flex w-full min-h-[50px] items-center justify-center rounded-full bg-gradient-to-r from-[#ff751f] to-orange-500 px-6 py-3 text-sm font-semibold text-white shadow-md transition hover:from-orange-600 hover:to-orange-500">
+                                    تأكيد الطلب الآن
+                                </button>
+                            </form>
+                        </div>
+                    </div>
                     <a
                         href="{{ $whatsappUrl }}"
                         target="_blank"
