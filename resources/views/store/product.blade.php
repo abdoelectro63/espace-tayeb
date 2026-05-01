@@ -240,25 +240,29 @@
                                 </div>
                             </div>
                         @endif
-                        <div class="flex flex-col gap-2">
-                            <label for="cart-quantity" class="text-sm font-semibold text-zinc-900">الكمية</label>
-                            <input
-                                id="cart-quantity"
-                                type="number"
-                                name="quantity"
-                                value="1"
-                                min="1"
-                                max="{{ $product->maxOrderableQuantity() }}"
-                                class="w-28 rounded-lg border border-zinc-200 bg-white px-3 py-2 text-center text-sm font-medium"
-                            >
-                            <p class="text-xs text-zinc-500">
-                                @if($product->track_stock)
-                                    متوفر: {{ $product->stock }}
-                                @else
-                                    متوفر
-                                @endif
-                            </p>
-                        </div>
+                        @if($product->showsQuantitySelector())
+                            <div class="flex flex-col gap-2">
+                                <label for="cart-quantity" class="text-sm font-semibold text-zinc-900">الكمية</label>
+                                <input
+                                    id="cart-quantity"
+                                    type="number"
+                                    name="quantity"
+                                    value="1"
+                                    min="1"
+                                    max="{{ $product->maxOrderableQuantity() }}"
+                                    class="w-28 rounded-lg border border-zinc-200 bg-white px-3 py-2 text-center text-sm font-medium"
+                                >
+                                <p class="text-xs text-zinc-500">
+                                    @if($product->track_stock)
+                                        متوفر: {{ $product->stock }}
+                                    @else
+                                        متوفر
+                                    @endif
+                                </p>
+                            </div>
+                        @else
+                            <input type="hidden" name="quantity" value="1">
+                        @endif
                         @if($product->allowsAddToCart())
                             <button
                                 type="submit"

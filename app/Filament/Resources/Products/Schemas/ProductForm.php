@@ -68,6 +68,10 @@ class ProductForm
                             ->required()
                             ->native(false)
                             ->helperText('تحكم في ظهور زر "أضف إلى السلة" داخل صفحة المنتج.'),
+                        Forms\Components\Toggle::make('show_quantity_selector')
+                            ->label('إظهار اختيار الكمية في صفحة المنتج')
+                            ->default(true)
+                            ->helperText('عند الإيقاف، يتم إرسال الطلب بكمية 1 تلقائياً.'),
 
                         Forms\Components\Repeater::make('specifications')
                             ->label('مواصفات المنتج')

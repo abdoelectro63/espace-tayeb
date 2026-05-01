@@ -60,6 +60,7 @@ class Product extends Model
         'offer_type',
         'offer_value',
         'cta_mode',
+        'show_quantity_selector',
     ];
 
     protected static function booted(): void
@@ -266,6 +267,7 @@ class Product extends Model
         'free_shipping' => 'boolean',
         'track_stock' => 'boolean',
         'offer_value' => 'decimal:2',
+        'show_quantity_selector' => 'boolean',
     ];
 
     /**
@@ -501,6 +503,11 @@ class Product extends Model
     public function allowsAddToCart(): bool
     {
         return ($this->cta_mode ?? self::CTA_ADD_TO_CART_AND_BUY_NOW) === self::CTA_ADD_TO_CART_AND_BUY_NOW;
+    }
+
+    public function showsQuantitySelector(): bool
+    {
+        return $this->show_quantity_selector ?? true;
     }
 
     public static function generateUniqueCode(string $name): string
