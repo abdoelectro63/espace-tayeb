@@ -58,6 +58,17 @@ class ProductForm
                 Section::make('تفاصيل صفحة المنتج')
                     ->description('هذه البيانات تظهر أسفل زر أضف إلى السلة في صفحة المنتج.')
                     ->schema([
+                        Forms\Components\Select::make('cta_mode')
+                            ->label('أزرار الشراء في صفحة المنتج')
+                            ->options([
+                                Product::CTA_ADD_TO_CART_AND_BUY_NOW => 'أضف إلى السلة + شراء الآن',
+                                Product::CTA_BUY_NOW_ONLY => 'شراء الآن فقط',
+                            ])
+                            ->default(Product::CTA_ADD_TO_CART_AND_BUY_NOW)
+                            ->required()
+                            ->native(false)
+                            ->helperText('تحكم في ظهور زر "أضف إلى السلة" داخل صفحة المنتج.'),
+
                         Forms\Components\Repeater::make('specifications')
                             ->label('مواصفات المنتج')
                             ->schema([

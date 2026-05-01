@@ -208,11 +208,12 @@
                     <form
                         id="product-add-cart-form"
                         method="post"
-                        action="{{ route('store.cart.add') }}"
+                        action="{{ $product->allowsAddToCart() ? route('store.cart.add') : '#' }}"
                         class="{{ $hasVariations ? '' : 'mt-10 ' }}flex flex-col gap-4 rounded-2xl border border-orange-100 bg-orange-50/50 p-6 sm:flex-row sm:flex-wrap sm:items-end sm:justify-between"
-                        data-add-to-cart
+                        @if($product->allowsAddToCart()) data-add-to-cart @endif
                         data-fly-image="{{ e($product->mainImageUrl()) }}"
                         data-fly-source-selector="[data-main-product-img]"
+                        @if(! $product->allowsAddToCart()) onsubmit="return false;" @endif
                     >
                         @csrf
                         <input type="hidden" name="product_id" value="{{ $product->id }}">
@@ -258,15 +259,17 @@
                                 @endif
                             </p>
                         </div>
-                        <button
-                            type="submit"
-                            class="inline-flex w-full min-h-[52px] items-center justify-center gap-2.5 rounded-full bg-[#ff751f] px-8 py-4 text-base font-semibold text-white shadow-md transition hover:bg-orange-600 sm:w-auto sm:min-w-[200px]"
-                        >
-                            <svg class="h-5 w-5 shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor" aria-hidden="true">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 3h1.386c.51 0 .955.343 1.087.835l.383 1.437M7.5 14.25a3 3 0 00-3 3h15.75m-12.75-3h11.218c1.121-2.3 2.1-4.684 2.924-7.138M8.25 20.25a.75.75 0 100-1.5.75.75 0 000 1.5zm9 0a.75.75 0 100-1.5.75.75 0 000 1.5z" />
-                            </svg>
-                            <span>أضف إلى السلة</span>
-                        </button>
+                        @if($product->allowsAddToCart())
+                            <button
+                                type="submit"
+                                class="inline-flex w-full min-h-[52px] items-center justify-center gap-2.5 rounded-full bg-[#ff751f] px-8 py-4 text-base font-semibold text-white shadow-md transition hover:bg-orange-600 sm:w-auto sm:min-w-[200px]"
+                            >
+                                <svg class="h-5 w-5 shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor" aria-hidden="true">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 3h1.386c.51 0 .955.343 1.087.835l.383 1.437M7.5 14.25a3 3 0 00-3 3h15.75m-12.75-3h11.218c1.121-2.3 2.1-4.684 2.924-7.138M8.25 20.25a.75.75 0 100-1.5.75.75 0 000 1.5zm9 0a.75.75 0 100-1.5.75.75 0 000 1.5z" />
+                                </svg>
+                                <span>أضف إلى السلة</span>
+                            </button>
+                        @endif
                         <button
                             type="button"
                             class="inline-flex w-full min-h-[52px] items-center justify-center gap-2.5 rounded-full bg-gradient-to-r from-emerald-600 to-emerald-500 px-8 py-4 text-base font-semibold text-white shadow-lg shadow-emerald-500/30 transition hover:from-emerald-700 hover:to-emerald-600 sm:w-auto sm:min-w-[220px]"

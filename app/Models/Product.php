@@ -15,6 +15,16 @@ class Product extends Model
 {
     use HasFactory;
 
+    public const CTA_ADD_TO_CART_AND_BUY_NOW = 'add_to_cart_and_buy_now';
+
+    public const CTA_BUY_NOW_ONLY = 'buy_now_only';
+
+    /** @var list<string> */
+    public const CTA_MODES = [
+        self::CTA_ADD_TO_CART_AND_BUY_NOW,
+        self::CTA_BUY_NOW_ONLY,
+    ];
+
     public const OFFER_NONE = 'none';
 
     public const OFFER_PERCENTAGE = 'percentage';
@@ -49,6 +59,7 @@ class Product extends Model
         'free_shipping',
         'offer_type',
         'offer_value',
+        'cta_mode',
     ];
 
     protected static function booted(): void
@@ -485,6 +496,11 @@ class Product extends Model
         }
 
         return max(0, (int) ($this->stock ?? 0));
+    }
+
+    public function allowsAddToCart(): bool
+    {
+        return ($this->cta_mode ?? self::CTA_ADD_TO_CART_AND_BUY_NOW) === self::CTA_ADD_TO_CART_AND_BUY_NOW;
     }
 
     public static function generateUniqueCode(string $name): string
