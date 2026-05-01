@@ -17,7 +17,7 @@
         </div>
     </div>
 
-    <div class="mx-auto max-w-6xl px-4 py-12 sm:px-6">
+    <div class="mx-auto max-w-6xl px-4 py-8 pb-28 sm:px-6 sm:py-12 sm:pb-12">
         @if($lines->isEmpty())
             <div class="rounded-2xl border border-dashed border-zinc-200 bg-white p-12 text-center text-zinc-600">
                 السلة فارغة.
@@ -34,9 +34,9 @@
                 </div>
             @endif
 
-            <form method="post" action="{{ route('store.checkout.store') }}" class="grid gap-10 lg:grid-cols-3" id="checkout-form">
+            <form method="post" action="{{ route('store.checkout.store') }}" class="grid gap-6 lg:grid-cols-3 lg:gap-10" id="checkout-form">
                 @csrf
-                <div class="lg:col-span-2 space-y-6">
+                <div class="space-y-5 lg:col-span-2 lg:space-y-6">
                     <div class="overflow-hidden rounded-2xl border border-zinc-100 bg-white shadow-sm">
                         <div class="border-b border-zinc-100 px-4 py-3 text-sm font-semibold text-zinc-900">المنتجات</div>
                         <ul class="divide-y divide-zinc-100">
@@ -59,7 +59,7 @@
                         </ul>
                     </div>
 
-                    <div class="rounded-2xl border border-zinc-100 bg-white p-6 shadow-sm">
+                    <div class="rounded-2xl border border-zinc-100 bg-white p-4 shadow-sm sm:p-6">
                         <h2 class="text-lg font-bold text-zinc-900">المدينة والتوصيل</h2>
                         <p class="mt-2 text-sm text-zinc-600">
                             <span class="font-medium text-zinc-800">الدار البيضاء:</span> يُضاف تلقائياً {{ number_format((float) $casFee, 0) }} DH للتوصيل.
@@ -106,7 +106,7 @@
                         </div>
                     </div>
 
-                    <div class="rounded-2xl border border-zinc-100 bg-white p-6 shadow-sm">
+                    <div class="rounded-2xl border border-zinc-100 bg-white p-4 shadow-sm sm:p-6">
                         <h2 class="text-lg font-bold text-zinc-900">بيانات التوصيل</h2>
                         <div class="mt-4 grid gap-4 sm:grid-cols-2">
                             <div class="sm:col-span-2">
@@ -154,7 +154,7 @@
                             </span>
                         </div>
                         <p class="text-xs text-zinc-500">اختر الدار البيضاء ({{ number_format((float) $casFee, 0) }} DH) أو مدينة أخرى ({{ number_format((float) $otherFee, 0) }} DH) ليظهر المجموع. إن كانت كل المنتجات بتوصيل مجاني، لا تُحسب رسوم التوصيل.</p>
-                        <button type="submit" class="w-full rounded-full bg-emerald-700 py-3 text-sm font-semibold text-white shadow transition hover:bg-emerald-800">
+                        <button type="submit" class="hidden w-full rounded-full bg-emerald-700 py-3 text-sm font-semibold text-white shadow transition hover:bg-emerald-800 lg:block">
                             تأكيد الطلب
                         </button>
                         <a href="{{ route('store.cart') }}" class="block w-full rounded-full border border-zinc-200 py-3 text-center text-sm font-semibold text-zinc-700 hover:bg-zinc-50">
@@ -163,6 +163,16 @@
                     </div>
                 </div>
             </form>
+
+            <div class="fixed inset-x-0 bottom-0 z-40 border-t border-zinc-200 bg-white/95 p-3 backdrop-blur lg:hidden">
+                <button
+                    type="submit"
+                    form="checkout-form"
+                    class="w-full rounded-full bg-emerald-700 py-3 text-sm font-semibold text-white shadow transition active:bg-emerald-800"
+                >
+                    تأكيد الطلب الآن
+                </button>
+            </div>
 
             <script>
                 (function () {
