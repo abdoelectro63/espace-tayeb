@@ -42,6 +42,37 @@ class CheckoutController extends Controller
 
     public function store(Request $request, ShoppingCart $cart): RedirectResponse
     {
+        $quickProductId = (int) $request->integer('quick_product_id');
+        if ($quickProductId > 0) {
+            $quickProduct = Product::query()
+                ->where('is_active', true)
+                ->with('variations')
+                ->find($quickProductId);
+
+            if ($quickProduct === null) {
+                return back()
+                    ->withErrors(['checkout' => 'المنتج غير متاح حالياً.'])
+                    ->withInput();
+            }
+
+            $quickQuantity = max(1, (int) $request->integer('quick_quantity', 1));
+            $quickVariationId = $request->filled('quick_product_variation_id')
+                ? (int) $request->input('quick_product_variation_id')
+                : null;
+
+            if ($quickProduct->variations->isNotEmpty() && $quickVariationId !== null) {
+                $isValidVariation = $quickProduct->variations
+                    ->contains(fn ($variation): bool => (int) $variation->id === $quickVariationId);
+                if (! $isValidVariation) {
+                    $quickVariationId = null;
+                }
+            }
+
+            // Buy Now should checkout this product directly, not previous cart lines.
+            $cart->clear();
+            $cart->add($quickProduct, $quickQuantity, $quickVariationId);
+        }
+
         $cart->syncWithCatalog();
         if ($cart->lines()->isEmpty()) {
             return redirect()

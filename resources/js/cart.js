@@ -814,10 +814,12 @@ function initPurchaseNowModal() {
 
     const trigger = document.querySelector('[data-purchase-now-trigger]');
     const modal = document.getElementById('purchase-now-modal');
+    const inlineRoot = document.getElementById('purchase-now-inline');
     const form = document.getElementById('purchase-now-form');
-    if (!trigger || !modal || !form) {
+    if (!trigger || !form) {
         return;
     }
+    const useInlineCheckout = trigger.dataset.inlineCheckout === '1';
 
     const nameEl = document.getElementById('purchase-now-product-name');
     const subtotalEl = document.getElementById('purchase-now-subtotal');
@@ -826,6 +828,8 @@ function initPurchaseNowModal() {
     const zoneEl = document.getElementById('purchase-shipping-zone');
     const cityWrap = document.getElementById('purchase-city-wrap');
     const cityInput = document.getElementById('purchase-city');
+    const quickQtyInput = document.getElementById('purchase-quick-quantity');
+    const quickVariationInput = document.getElementById('purchase-quick-variation-id');
     const sourceForm = document.getElementById('product-add-cart-form');
     const casablancaFee = Number.parseFloat(trigger.dataset.casablancaFee || '0') || 0;
     const otherFee = Number.parseFloat(trigger.dataset.otherFee || '0') || 0;
@@ -859,6 +863,12 @@ function initPurchaseNowModal() {
     function refreshModalSummary() {
         const qty = currentQuantity();
         const unit = currentUnitPrice();
+        if (quickQtyInput) {
+            quickQtyInput.value = String(qty);
+        }
+        if (quickVariationInput) {
+            quickVariationInput.value = currentVariationId() || '';
+        }
         const subtotal = unit * qty;
         const shipping =
             hasFreeShipping ? 0 : zoneEl?.value === 'other' ? otherFee : casablancaFee;
@@ -870,7 +880,7 @@ function initPurchaseNowModal() {
             subtotalEl.textContent = `${subtotal.toFixed(2)} MAD`;
         }
         if (shippingEl) {
-            shippingEl.textContent = hasFreeShipping ? '0.00 MAD (Free)' : `${shipping.toFixed(2)} MAD`;
+            shippingEl.textContent = hasFreeShipping ? 'التوصيل مجاني' : `${shipping.toFixed(2)} MAD`;
         }
         if (totalEl) {
             totalEl.textContent = `${total.toFixed(2)} MAD`;
@@ -879,12 +889,25 @@ function initPurchaseNowModal() {
 
     function openModal() {
         refreshModalSummary();
+        if (useInlineCheckout) {
+            inlineRoot?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            form.querySelector('input,select,textarea')?.focus();
+
+            return;
+        }
+
+        if (!modal) {
+            return;
+        }
         modal.classList.remove('hidden');
         document.documentElement.classList.add('overflow-hidden');
         document.body.classList.add('overflow-hidden');
     }
 
     function closeModal() {
+        if (!modal) {
+            return;
+        }
         modal.classList.add('hidden');
         document.documentElement.classList.remove('overflow-hidden');
         document.body.classList.remove('overflow-hidden');
@@ -901,7 +924,7 @@ function initPurchaseNowModal() {
         }
     }
 
-    modal.querySelectorAll('[data-purchase-now-close]').forEach((el) => {
+    modal?.querySelectorAll('[data-purchase-now-close]').forEach((el) => {
         el.addEventListener('click', closeModal);
     });
     trigger.addEventListener('click', openModal);
@@ -912,8 +935,13 @@ function initPurchaseNowModal() {
     sourceForm?.querySelector('input[name="quantity"]')?.addEventListener('input', refreshModalSummary);
     sourceForm?.querySelector('select[name="product_variation_id"]')?.addEventListener('change', refreshModalSummary);
     syncCityVisibility();
+    refreshModalSummary();
 
     document.addEventListener('keydown', (e) => {
+        if (!modal || useInlineCheckout) {
+            return;
+        }
+
         if (e.key === 'Escape' && !modal.classList.contains('hidden')) {
             closeModal();
         }

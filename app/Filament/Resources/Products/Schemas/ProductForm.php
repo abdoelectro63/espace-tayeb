@@ -72,6 +72,16 @@ class ProductForm
                             ->label('إظهار اختيار الكمية في صفحة المنتج')
                             ->default(true)
                             ->helperText('عند الإيقاف، يتم إرسال الطلب بكمية 1 تلقائياً.'),
+                        Forms\Components\Radio::make('show_inline_checkout_form')
+                            ->label('عرض نموذج إتمام الشراء أسفل زر "شراء الآن"')
+                            ->options([
+                                1 => 'نعم',
+                                0 => 'لا',
+                            ])
+                            ->default(0)
+                            ->required()
+                            ->inline()
+                            ->helperText('عند اختيار "نعم"، زر "شراء الآن" يمرر الزبون إلى النموذج داخل نفس الصفحة بدل النافذة المنبثقة.'),
 
                         Forms\Components\Repeater::make('specifications')
                             ->label('مواصفات المنتج')

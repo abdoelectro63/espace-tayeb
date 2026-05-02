@@ -61,6 +61,7 @@ class Product extends Model
         'offer_value',
         'cta_mode',
         'show_quantity_selector',
+        'show_inline_checkout_form',
     ];
 
     protected static function booted(): void
@@ -268,6 +269,7 @@ class Product extends Model
         'track_stock' => 'boolean',
         'offer_value' => 'decimal:2',
         'show_quantity_selector' => 'boolean',
+        'show_inline_checkout_form' => 'boolean',
     ];
 
     /**

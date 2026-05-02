@@ -274,6 +274,9 @@
                                 <span>أضف إلى السلة</span>
                             </button>
                         @endif
+                        @php
+                            $showInlineCheckoutForm = (bool) ($product->show_inline_checkout_form ?? false);
+                        @endphp
                         <button
                             type="button"
                             class="inline-flex w-full min-h-[52px] items-center justify-center gap-2.5 rounded-full bg-gradient-to-r from-emerald-600 to-emerald-500 px-8 py-4 text-base font-semibold text-white shadow-lg shadow-emerald-500/30 transition hover:from-emerald-700 hover:to-emerald-600 sm:w-auto sm:min-w-[220px]"
@@ -287,6 +290,7 @@
                             data-casablanca-fee="{{ number_format($purchaseCasablancaFee, 2, '.', '') }}"
                             data-other-fee="{{ number_format($purchaseOtherCitiesFee, 2, '.', '') }}"
                             data-free-shipping="{{ $isPurchaseFreeShipping ? '1' : '0' }}"
+                            data-inline-checkout="{{ $showInlineCheckoutForm ? '1' : '0' }}"
                         >
                             <svg class="h-5 w-5 shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor" aria-hidden="true">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-2.25 0h13.5a1.5 1.5 0 011.5 1.5v7.5a1.5 1.5 0 01-1.5 1.5H5.25a1.5 1.5 0 01-1.5-1.5v-7.5a1.5 1.5 0 011.5-1.5z" />
@@ -294,21 +298,17 @@
                             <span>شراء الآن</span>
                         </button>
                     </form>
-                    <div id="purchase-now-modal" class="fixed inset-0 z-[120] hidden">
-                        <div class="absolute inset-0 bg-zinc-950/55 backdrop-blur-[2px]" data-purchase-now-close></div>
-                        <div class="absolute left-1/2 top-1/2 w-[min(94vw,560px)] -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-2xl border border-zinc-100 bg-white shadow-2xl">
-                            <div class="flex items-start justify-between gap-3 border-b border-zinc-100 bg-gradient-to-r from-emerald-50 to-white px-5 py-4">
-                                <div>
-                                    <p class="text-base font-bold text-zinc-900">إتمام الشراء السريع</p>
-                                    <p class="mt-1 text-xs text-zinc-500">أدخل بياناتك وأكد الطلب مباشرة.</p>
-                                </div>
-                                <button type="button" class="rounded-full p-2 text-zinc-500 transition hover:bg-zinc-100 hover:text-zinc-900" data-purchase-now-close aria-label="إغلاق">
-                                    <svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor" aria-hidden="true">
-                                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
-                                    </svg>
-                                </button>
+                    @if($showInlineCheckoutForm)
+                        <div id="purchase-now-inline" class="mt-4 w-full max-w-xl scroll-mt-24 rounded-2xl border border-zinc-100 bg-white shadow-sm">
+                            <div class="border-b border-zinc-100 bg-gradient-to-r from-emerald-50 to-white px-5 py-4">
+                                <p class="text-base font-bold text-zinc-900">إتمام الشراء السريع</p>
+                                <p class="mt-1 text-xs text-zinc-500">أدخل بياناتك وأكد الطلب مباشرة.</p>
                             </div>
-                            <form id="purchase-now-form" class="space-y-4 px-5 py-5 sm:px-6 sm:py-6">
+                            <form id="purchase-now-form" method="post" action="{{ route('store.checkout.store') }}" class="space-y-4 px-5 py-5 sm:px-6 sm:py-6">
+                                @csrf
+                                <input type="hidden" name="quick_product_id" value="{{ $product->id }}">
+                                <input type="hidden" name="quick_quantity" value="1" id="purchase-quick-quantity">
+                                <input type="hidden" name="quick_product_variation_id" value="{{ $defaultVariation?->id }}" id="purchase-quick-variation-id">
                                 <div class="rounded-xl border border-emerald-100 bg-emerald-50/50 p-3">
                                     <p id="purchase-now-product-name" class="text-sm font-semibold text-zinc-900"></p>
                                     <div class="mt-2 space-y-1.5 text-sm">
@@ -356,7 +356,75 @@
                                 </button>
                             </form>
                         </div>
-                    </div>
+                    @else
+                        <div id="purchase-now-modal" class="fixed inset-0 z-[120] hidden">
+                            <div class="absolute inset-0 bg-zinc-950/55 backdrop-blur-[2px]" data-purchase-now-close></div>
+                            <div class="absolute left-1/2 top-1/2 w-[min(94vw,560px)] -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-2xl border border-zinc-100 bg-white shadow-2xl">
+                                <div class="flex items-start justify-between gap-3 border-b border-zinc-100 bg-gradient-to-r from-emerald-50 to-white px-5 py-4">
+                                    <div>
+                                        <p class="text-base font-bold text-zinc-900">إتمام الشراء السريع</p>
+                                        <p class="mt-1 text-xs text-zinc-500">أدخل بياناتك وأكد الطلب مباشرة.</p>
+                                    </div>
+                                    <button type="button" class="rounded-full p-2 text-zinc-500 transition hover:bg-zinc-100 hover:text-zinc-900" data-purchase-now-close aria-label="إغلاق">
+                                        <svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor" aria-hidden="true">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                                        </svg>
+                                    </button>
+                                </div>
+                                <form id="purchase-now-form" method="post" action="{{ route('store.checkout.store') }}" class="space-y-4 px-5 py-5 sm:px-6 sm:py-6">
+                                    @csrf
+                                    <input type="hidden" name="quick_product_id" value="{{ $product->id }}">
+                                    <input type="hidden" name="quick_quantity" value="1" id="purchase-quick-quantity">
+                                    <input type="hidden" name="quick_product_variation_id" value="{{ $defaultVariation?->id }}" id="purchase-quick-variation-id">
+                                    <div class="rounded-xl border border-emerald-100 bg-emerald-50/50 p-3">
+                                        <p id="purchase-now-product-name" class="text-sm font-semibold text-zinc-900"></p>
+                                        <div class="mt-2 space-y-1.5 text-sm">
+                                            <p class="flex items-center justify-between text-zinc-600">
+                                                <span>مجموع المنتجات</span>
+                                                <span id="purchase-now-subtotal" class="font-semibold text-zinc-900"></span>
+                                            </p>
+                                            <p class="flex items-center justify-between text-zinc-600">
+                                                <span>رسوم التوصيل</span>
+                                                <span id="purchase-now-shipping" class="font-semibold text-zinc-900"></span>
+                                            </p>
+                                            <p class="flex items-center justify-between border-t border-emerald-200 pt-1 text-zinc-700">
+                                                <span class="font-semibold">المجموع الكلي</span>
+                                                <span id="purchase-now-total" class="text-base font-bold text-emerald-700"></span>
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <div class="grid gap-4 sm:grid-cols-2">
+                                        <div class="sm:col-span-2">
+                                            <label for="purchase-customer-name" class="block text-sm font-medium text-zinc-700">الاسم الكامل</label>
+                                            <input id="purchase-customer-name" name="customer_name" type="text" required class="mt-1 w-full rounded-xl border border-zinc-200 px-3 py-2.5 text-sm" autocomplete="name">
+                                        </div>
+                                        <div class="sm:col-span-2">
+                                            <label for="purchase-customer-phone" class="block text-sm font-medium text-zinc-700">الهاتف</label>
+                                            <input id="purchase-customer-phone" name="customer_phone" type="tel" required class="mt-1 w-full rounded-xl border border-zinc-200 px-3 py-2.5 text-sm" autocomplete="tel">
+                                        </div>
+                                        <div class="sm:col-span-2">
+                                            <label for="purchase-shipping-zone" class="block text-sm font-medium text-zinc-700">المدينة</label>
+                                            <select id="purchase-shipping-zone" name="shipping_zone" required class="mt-1 w-full rounded-xl border border-zinc-200 bg-white px-3 py-2.5 text-sm font-medium text-zinc-900">
+                                                <option value="casablanca">الدار البيضاء</option>
+                                                <option value="other">مدينة أخرى</option>
+                                            </select>
+                                        </div>
+                                        <div id="purchase-city-wrap" class="sm:col-span-2 hidden">
+                                            <label for="purchase-city" class="block text-sm font-medium text-zinc-700">اسم المدينة</label>
+                                            <input id="purchase-city" name="city" type="text" class="mt-1 w-full rounded-xl border border-zinc-200 px-3 py-2.5 text-sm" autocomplete="address-level2" maxlength="255" placeholder="مثال: فاس، مراكش، طنجة...">
+                                        </div>
+                                        <div class="sm:col-span-2">
+                                            <label for="purchase-shipping-address" class="block text-sm font-medium text-zinc-700">عنوان التوصيل الكامل</label>
+                                            <textarea id="purchase-shipping-address" name="shipping_address" rows="3" required class="mt-1 w-full rounded-xl border border-zinc-200 px-3 py-2.5 text-sm"></textarea>
+                                        </div>
+                                    </div>
+                                    <button type="submit" class="inline-flex w-full min-h-[50px] items-center justify-center rounded-full bg-gradient-to-r from-[#ff751f] to-orange-500 px-6 py-3 text-sm font-semibold text-white shadow-md transition hover:from-orange-600 hover:to-orange-500">
+                                        تأكيد الطلب الآن
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+                    @endif
                     <a
                         href="{{ $whatsappUrl }}"
                         target="_blank"
@@ -569,3 +637,101 @@
         @endif
     </div>
 </x-layouts.store>
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const quickForm = document.getElementById('purchase-now-form');
+        if (!quickForm) {
+            return;
+        }
+
+        const trigger = document.querySelector('[data-purchase-now-trigger]');
+        const zoneEl = document.getElementById('purchase-shipping-zone');
+        const cityWrap = document.getElementById('purchase-city-wrap');
+        const cityInput = document.getElementById('purchase-city');
+        const shippingEl = document.getElementById('purchase-now-shipping');
+        const subtotalEl = document.getElementById('purchase-now-subtotal');
+        const totalEl = document.getElementById('purchase-now-total');
+        const sourceForm = document.getElementById('product-add-cart-form');
+        const quickQtyInput = document.getElementById('purchase-quick-quantity');
+        const quickVariationInput = document.getElementById('purchase-quick-variation-id');
+
+        const casablancaFee = Number.parseFloat(trigger?.dataset.casablancaFee || '0') || 0;
+        const otherFee = Number.parseFloat(trigger?.dataset.otherFee || '0') || 0;
+        const hasFreeShipping = (trigger?.dataset.freeShipping || '0') === '1';
+        const hasVariations = (trigger?.dataset.hasVariations || '0') === '1';
+        let variationPrices = {};
+        try {
+            variationPrices = JSON.parse(trigger?.dataset.variationPrices || '{}');
+        } catch (_) {
+            variationPrices = {};
+        }
+
+        function parseAmount(el) {
+            const raw = (el?.textContent || '').replace(',', '.');
+            const n = Number.parseFloat(raw);
+            return Number.isFinite(n) ? n : 0;
+        }
+
+        function syncCityInput() {
+            if (!zoneEl || !cityWrap || !cityInput) {
+                return;
+            }
+
+            const isOther = zoneEl.value === 'other';
+            cityWrap.classList.toggle('hidden', !isOther);
+            cityInput.required = isOther;
+            if (!isOther) {
+                cityInput.value = '';
+            }
+        }
+
+        function syncShippingSummary() {
+            if (!zoneEl || !shippingEl) {
+                return;
+            }
+
+            const qty = Math.max(1, Number.parseInt(sourceForm?.querySelector('input[name="quantity"]')?.value || '1', 10) || 1);
+            const selectedVariationId = sourceForm?.querySelector('select[name="product_variation_id"]')?.value || '';
+            const basePrice = Number.parseFloat(trigger?.dataset.basePrice || '0') || 0;
+            const unitPrice = hasVariations && selectedVariationId && variationPrices[selectedVariationId] !== undefined
+                ? (Number.parseFloat(variationPrices[selectedVariationId]) || basePrice)
+                : basePrice;
+            const subtotal = unitPrice * qty;
+
+            if (subtotalEl) {
+                subtotalEl.textContent = `${subtotal.toFixed(2)} MAD`;
+            }
+            if (quickQtyInput) {
+                quickQtyInput.value = String(qty);
+            }
+            if (quickVariationInput) {
+                quickVariationInput.value = selectedVariationId;
+            }
+
+            if (hasFreeShipping) {
+                shippingEl.textContent = 'التوصيل مجاني';
+                if (totalEl) {
+                    totalEl.textContent = `${subtotal.toFixed(2)} MAD`;
+                }
+                return;
+            }
+
+            const fee = zoneEl.value === 'other' ? otherFee : casablancaFee;
+            shippingEl.textContent = `${fee.toFixed(2)} MAD`;
+
+            if (totalEl) {
+                totalEl.textContent = `${(subtotal + fee).toFixed(2)} MAD`;
+            }
+        }
+
+        zoneEl?.addEventListener('change', function () {
+            syncCityInput();
+            syncShippingSummary();
+        });
+        sourceForm?.querySelector('input[name="quantity"]')?.addEventListener('input', syncShippingSummary);
+        sourceForm?.querySelector('select[name="product_variation_id"]')?.addEventListener('change', syncShippingSummary);
+
+        syncCityInput();
+        syncShippingSummary();
+    });
+</script>
