@@ -36,6 +36,9 @@
 
             <form method="post" action="{{ route('store.checkout.store') }}" class="grid gap-6 lg:grid-cols-3 lg:gap-10" id="checkout-form">
                 @csrf
+                <input type="hidden" name="fbp" id="fbp_field" value="">
+                <input type="hidden" name="fbc" id="fbc_field" value="">
+                <input type="hidden" name="event_id" id="event_id_field" value="{{ uniqid('evt_') }}">
                 <div class="space-y-5 lg:col-span-2 lg:space-y-6">
                     <div class="overflow-hidden rounded-2xl border border-zinc-100 bg-white shadow-sm">
                         <div class="border-b border-zinc-100 px-4 py-3 text-sm font-semibold text-zinc-900">المنتجات</div>
@@ -244,6 +247,38 @@
                     });
 
                     toggleOtherCity();
+
+                    function getCookie(name) {
+                        const match = document.cookie.match(new RegExp('(?:^|; )' + name.replace(/([.$?*|{}()[\]\\/+^])/g, '\\$1') + '=([^;]*)'));
+                        return match ? decodeURIComponent(match[1]) : '';
+                    }
+
+                    const checkoutForm = document.getElementById('checkout-form');
+                    const fbpField = document.getElementById('fbp_field');
+                    const fbcField = document.getElementById('fbc_field');
+                    const eventIdField = document.getElementById('event_id_field');
+                    if (fbpField) {
+                        fbpField.value = getCookie('_fbp') || '';
+                    }
+                    if (fbcField) {
+                        fbcField.value = getCookie('_fbc') || '';
+                    }
+
+                    checkoutForm?.addEventListener('submit', function () {
+                        if (fbpField) {
+                            fbpField.value = getCookie('_fbp') || fbpField.value || '';
+                        }
+                        if (fbcField) {
+                            fbcField.value = getCookie('_fbc') || fbcField.value || '';
+                        }
+
+                        const eventId = eventIdField?.value || '';
+                        const grandText = (elGrand?.textContent || '').replace(',', '.');
+                        const value = Number.parseFloat(grandText) || 0;
+                        if (typeof fbq === 'function' && eventId) {
+                            fbq('track', 'Purchase', { value: value, currency: 'MAD' }, { eventID: eventId });
+                        }
+                    });
                 })();
             </script>
         @endif

@@ -12,6 +12,7 @@
         t.src=v;s=b.getElementsByTagName(e)[0];
         s.parentNode.insertBefore(t,s)}(window, document,'script',
         'https://connect.facebook.net/en_US/fbevents.js');
+        // Advanced Matching via Automatic Advanced Matching (Events Manager) + CAPI (ph/ct/fbp/fbc).
         fbq('init', @json($fbId));
         fbq('track', 'PageView');
     </script>

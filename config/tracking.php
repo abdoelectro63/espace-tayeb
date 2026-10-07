@@ -2,7 +2,11 @@
 
 return [
 
-    'facebook_graph_version' => env('FACEBOOK_GRAPH_VERSION', 'v18.0'),
+    'facebook_pixel_id' => env('FACEBOOK_PIXEL_ID'),
+
+    'facebook_capi_token' => env('FACEBOOK_CAPI_TOKEN'),
+
+    'facebook_graph_version' => env('FACEBOOK_GRAPH_VERSION', 'v19.0'),
 
     'facebook_events_url' => env('FACEBOOK_EVENTS_URL'),
 
