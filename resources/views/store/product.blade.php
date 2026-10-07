@@ -309,6 +309,9 @@
                                 <input type="hidden" name="quick_product_id" value="{{ $product->id }}">
                                 <input type="hidden" name="quick_quantity" value="1" id="purchase-quick-quantity">
                                 <input type="hidden" name="quick_product_variation_id" value="{{ $defaultVariation?->id }}" id="purchase-quick-variation-id">
+                                <input type="hidden" name="fbp" id="fbp_field" value="">
+                                <input type="hidden" name="fbc" id="fbc_field" value="">
+                                <input type="hidden" name="event_id" id="event_id_field" value="{{ uniqid('evt_') }}">
                                 <div class="rounded-xl border border-emerald-100 bg-emerald-50/50 p-3">
                                     <p id="purchase-now-product-name" class="text-sm font-semibold text-zinc-900"></p>
                                     <div class="mt-2 space-y-1.5 text-sm">
@@ -376,6 +379,9 @@
                                     <input type="hidden" name="quick_product_id" value="{{ $product->id }}">
                                     <input type="hidden" name="quick_quantity" value="1" id="purchase-quick-quantity">
                                     <input type="hidden" name="quick_product_variation_id" value="{{ $defaultVariation?->id }}" id="purchase-quick-variation-id">
+                                    <input type="hidden" name="fbp" id="fbp_field" value="">
+                                    <input type="hidden" name="fbc" id="fbc_field" value="">
+                                    <input type="hidden" name="event_id" id="event_id_field" value="{{ uniqid('evt_') }}">
                                     <div class="rounded-xl border border-emerald-100 bg-emerald-50/50 p-3">
                                         <p id="purchase-now-product-name" class="text-sm font-semibold text-zinc-900"></p>
                                         <div class="mt-2 space-y-1.5 text-sm">
@@ -644,6 +650,24 @@
             return;
         }
 
+        function getCookie(name) {
+            const match = document.cookie.match(new RegExp('(?:^|; )' + name.replace(/([.$?*|{}()[\]\\/+^])/g, '\\$1') + '=([^;]*)'));
+            return match ? decodeURIComponent(match[1]) : '';
+        }
+
+        const fbpField = document.getElementById('fbp_field');
+        const fbcField = document.getElementById('fbc_field');
+        const eventIdField = document.getElementById('event_id_field');
+        if (fbpField) {
+            fbpField.value = getCookie('_fbp') || '';
+        }
+        if (fbcField) {
+            fbcField.value = getCookie('_fbc') || '';
+        }
+        if (eventIdField && !eventIdField.value) {
+            eventIdField.value = 'evt_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+        }
+
         const trigger = document.querySelector('[data-purchase-now-trigger]');
         const zoneEl = document.getElementById('purchase-shipping-zone');
         const cityWrap = document.getElementById('purchase-city-wrap');
@@ -733,5 +757,20 @@
 
         syncCityInput();
         syncShippingSummary();
+
+        quickForm.addEventListener('submit', function () {
+            if (fbpField) {
+                fbpField.value = getCookie('_fbp') || fbpField.value || '';
+            }
+            if (fbcField) {
+                fbcField.value = getCookie('_fbc') || fbcField.value || '';
+            }
+
+            const eventId = eventIdField?.value || '';
+            const value = parseAmount(totalEl);
+            if (typeof fbq === 'function' && eventId) {
+                fbq('track', 'Purchase', { value: value, currency: 'MAD' }, { eventID: eventId });
+            }
+        });
     });
 </script>

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Jobs\FacebookConversionJob;
 use App\Models\Order;
 use App\Models\OrderProduct;
 use App\Models\Product;
@@ -141,7 +142,29 @@ class CheckoutController extends Controller
         $cart->clear();
         $request->session()->forget('shipping_zone');
 
+        $eventId = filled($request->input('event_id'))
+            ? (string) $request->input('event_id')
+            : WebsitePurchaseEventId::forOrder($order);
+
+        FacebookConversionJob::dispatch(
+            $request->input('phone', $validated['customer_phone']),
+            $cityForOrder,
+            $request->input('address', $validated['shipping_address']),
+            $request->input('fbp'),
+            $request->input('fbc'),
+            $request->ip(),
+            $request->header('User-Agent'),
+            $eventId,
+            $order->total_price,
+        );
+
+        // Job owns Meta CAPI; thank-you must not send a second Purchase.
+        if ($order->checkout_capi_meta_sent_at === null) {
+            $order->forceFill(['checkout_capi_meta_sent_at' => now()])->saveQuietly();
+        }
+
         $request->session()->put('checkout_thank_you_order_id', $order->id);
+        $request->session()->put('checkout_purchase_event_id', $eventId);
 
         return redirect()->route('store.checkout.thank-you');
     }
@@ -170,7 +193,8 @@ class CheckoutController extends Controller
 
         $order->loadMissing('orderItems.product');
 
-        $eventId = WebsitePurchaseEventId::forOrder($order);
+        $eventId = (string) ($request->session()->get('checkout_purchase_event_id')
+            ?: WebsitePurchaseEventId::forOrder($order));
         $clientIp = $request->ip();
         $userAgent = $request->userAgent();
 
